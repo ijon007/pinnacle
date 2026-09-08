@@ -1,12 +1,14 @@
 import { GlassView } from 'expo-glass-effect';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
+import { withUniwind } from 'uniwind';
 
 import { hasLiquidGlass } from '@/lib/glass';
 
-type Props = ComponentProps<typeof GlassView> & {
+const UniwindGlassView = withUniwind(GlassView);
+
+type Props = ComponentProps<typeof UniwindGlassView> & {
   children?: ReactNode;
-  className?: string;
 };
 
 export function GlassSurface({
@@ -17,14 +19,20 @@ export function GlassSurface({
   ...rest
 }: Props) {
   return (
-    <GlassView
+    <UniwindGlassView
       {...rest}
       glassEffectStyle={hasLiquidGlass ? glassEffectStyle : 'none'}
-      className={[!hasLiquidGlass && 'border-border bg-card', className].filter(Boolean).join(' ')}
+      className={[
+        'overflow-hidden',
+        !hasLiquidGlass && 'border-border bg-card',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={[!hasLiquidGlass && styles.fallback, style]}
     >
       {children}
-    </GlassView>
+    </UniwindGlassView>
   );
 }
 
@@ -33,4 +41,3 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
 });
-
