@@ -1,70 +1,39 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { TabBarMinimizeProvider } from 'expo-glass-tabs';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+    <TabBarMinimizeProvider>
+      <NativeTabs minimizeBehavior="never">
+        <NativeTabs.Trigger name="logs" disableAutomaticContentInsets>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'list.clipboard', selected: 'list.clipboard.fill' }}
+            md={{ default: 'assignment', selected: 'assignment' }}
+          />
+          <NativeTabs.Trigger.Label hidden />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="leaderboard" disableAutomaticContentInsets>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'trophy', selected: 'trophy.fill' }}
+            md={{ default: 'emoji_events', selected: 'emoji_events' }}
+          />
+          <NativeTabs.Trigger.Label hidden />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="shots" disableAutomaticContentInsets>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'camera', selected: 'camera.fill' }}
+            md={{ default: 'photo_camera', selected: 'photo_camera' }}
+          />
+          <NativeTabs.Trigger.Label hidden />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="profile" disableAutomaticContentInsets>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'person', selected: 'person.fill' }}
+            md={{ default: 'person', selected: 'person' }}
+          />
+          <NativeTabs.Trigger.Label hidden />
+        </NativeTabs.Trigger>
+      </NativeTabs>
+    </TabBarMinimizeProvider>
   );
 }

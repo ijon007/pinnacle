@@ -1,0 +1,97 @@
+@import "tailwindcss";
+@import "uniwind";
+
+@theme {
+  --font-sans: Instrument Serif, ui-serif, serif;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius: 1.3rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.00);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.00), 0 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.00), 0 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.00), 0 2px 4px -1px hsl(0 0% 0% / 0.00);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.00), 0 4px 6px -1px hsl(0 0% 0% / 0.00);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.00), 0 8px 10px -1px hsl(0 0% 0% / 0.00);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.00);
+}
+
+@layer theme {
+  :root {
+    @variant light {
+      --color-background: oklch(0.9821 0 0);
+      --color-foreground: oklch(0.2435 0 0);
+      --color-card: oklch(0.9911 0 0);
+      --color-card-foreground: oklch(0.2435 0 0);
+      --color-popover: oklch(0.9911 0 0);
+      --color-popover-foreground: oklch(0.2435 0 0);
+      --color-primary: oklch(0.4341 0.0392 41.9938);
+      --color-primary-foreground: oklch(1 0 0);
+      --color-secondary: oklch(0.9200 0.0651 74.3695);
+      --color-secondary-foreground: oklch(0.3499 0.0685 40.8288);
+      --color-muted: oklch(0.9521 0 0);
+      --color-muted-foreground: oklch(0.5032 0 0);
+      --color-accent: oklch(0.9310 0 0);
+      --color-accent-foreground: oklch(0.2435 0 0);
+      --color-destructive: oklch(0.6271 0.1936 33.3390);
+      --color-destructive-foreground: oklch(1 0 0);
+      --color-border: oklch(0.8822 0 0);
+      --color-input: oklch(0.8822 0 0);
+      --color-ring: oklch(0.4341 0.0392 41.9938);
+      --color-chart-1: oklch(0.4341 0.0392 41.9938);
+      --color-chart-2: oklch(0.9200 0.0651 74.3695);
+      --color-chart-3: oklch(0.9310 0 0);
+      --color-chart-4: oklch(0.9367 0.0523 75.5009);
+      --color-chart-5: oklch(0.4338 0.0437 41.6746);
+      --color-sidebar: oklch(0.9881 0 0);
+      --color-sidebar-foreground: oklch(0.2645 0 0);
+      --color-sidebar-primary: oklch(0.3250 0 0);
+      --color-sidebar-primary-foreground: oklch(0.9881 0 0);
+      --color-sidebar-accent: oklch(0.9761 0 0);
+      --color-sidebar-accent-foreground: oklch(0.3250 0 0);
+      --color-sidebar-border: oklch(0.9401 0 0);
+      --color-sidebar-ring: oklch(0.7731 0 0);
+    }
+
+    @variant dark {
+      --color-background: oklch(0.1776 0 0);
+      --color-foreground: oklch(0.9491 0 0);
+      --color-card: oklch(0.2134 0 0);
+      --color-card-foreground: oklch(0.9491 0 0);
+      --color-popover: oklch(0.2134 0 0);
+      --color-popover-foreground: oklch(0.9491 0 0);
+      --color-primary: oklch(1 0 0);
+      --color-primary-foreground: oklch(0 0 0);
+      --color-secondary: oklch(0.5477 0.2174 22.6392);
+      --color-secondary-foreground: oklch(1 0 0);
+      --color-muted: oklch(0.2520 0 0);
+      --color-muted-foreground: oklch(0.7699 0 0);
+      --color-accent: oklch(0.2850 0 0);
+      --color-accent-foreground: oklch(0.9491 0 0);
+      --color-destructive: oklch(0.6271 0.1936 33.3390);
+      --color-destructive-foreground: oklch(1 0 0);
+      --color-border: oklch(0.2351 0.0115 91.7467);
+      --color-input: oklch(0.4017 0 0);
+      --color-ring: oklch(0.9247 0.0524 66.1732);
+      --color-chart-1: oklch(0.9247 0.0524 66.1732);
+      --color-chart-2: oklch(0.3163 0.0190 63.6992);
+      --color-chart-3: oklch(0.2850 0 0);
+      --color-chart-4: oklch(0.3481 0.0219 67.0001);
+      --color-chart-5: oklch(0.9245 0.0533 67.0855);
+      --color-sidebar: oklch(0.2103 0.0059 285.8852);
+      --color-sidebar-foreground: oklch(0.9674 0.0013 286.3752);
+      --color-sidebar-primary: oklch(0.4882 0.2172 264.3763);
+      --color-sidebar-primary-foreground: oklch(1 0 0);
+      --color-sidebar-accent: oklch(0.2739 0.0055 286.0326);
+      --color-sidebar-accent-foreground: oklch(0.9674 0.0013 286.3752);
+      --color-sidebar-border: oklch(0.2739 0.0055 286.0326);
+      --color-sidebar-ring: oklch(0.8711 0.0055 286.2860);
+    }
+  }
+}
