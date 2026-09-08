@@ -1,10 +1,20 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { TabBarMinimizeProvider } from 'expo-glass-tabs';
+import { DynamicColorIOS, Platform } from 'react-native';
+
+import { CHERRY } from '@/lib/theme';
+
+const idleIcon =
+  Platform.OS === 'ios'
+    ? DynamicColorIOS({ light: '#737373', dark: '#C4C4C4' })
+    : '#8E8E93';
 
 export default function TabLayout() {
   return (
     <TabBarMinimizeProvider>
-      <NativeTabs minimizeBehavior="never">
+      <NativeTabs
+        minimizeBehavior="never"
+        iconColor={{ default: idleIcon, selected: CHERRY }}>
         <NativeTabs.Trigger name="logs" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'list.clipboard', selected: 'list.clipboard.fill' }}
