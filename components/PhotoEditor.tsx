@@ -238,46 +238,43 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
         </Animated.View>
 
         {showChrome ? (
-          <View
-            pointerEvents="box-none"
-            style={[styles.chrome, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
-            <View style={styles.row}>
+          <>
+            <View pointerEvents="box-none" style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
               <GlassContainer spacing={10}>
                 <Chip label="Close" onPress={back}>
-                  <Text className="text-base text-white" style={{ fontFamily: 'DM Sans' }}>
+                  <Text className="text-base text-white" style={styles.chipLabel}>
                     Close
                   </Text>
                 </Chip>
               </GlassContainer>
               <GlassContainer spacing={10}>
                 <Chip label="Add text" onPress={addText}>
-                  <SymbolView name="textformat" size={16} tintColor="#fff" />
-                  <Text className="text-base text-white" style={{ fontFamily: 'DM Sans' }}>
+                  <SymbolView name="textformat" size={16} tintColor="#fff" weight="semibold" />
+                  <Text className="text-base text-white" style={styles.chipLabel}>
                     Text
                   </Text>
                 </Chip>
               </GlassContainer>
             </View>
-
-            <View style={styles.row}>
-              <GlassContainer spacing={10} style={styles.tools}>
+            <View pointerEvents="box-none" style={styles.bottomBar}>
+              <GlassContainer spacing={12} style={styles.tools}>
                 <Chip label="Undo" onPress={undo} disabled={!past.length}>
-                  <SymbolView name="arrow.uturn.backward" size={18} tintColor="#fff" />
+                  <SymbolView name="arrow.uturn.backward" size={18} tintColor="#fff" weight="semibold" />
                 </Chip>
                 <Chip label="Redo" onPress={redo} disabled={!future.length}>
-                  <SymbolView name="arrow.uturn.forward" size={18} tintColor="#fff" />
+                  <SymbolView name="arrow.uturn.forward" size={18} tintColor="#fff" weight="semibold" />
                 </Chip>
               </GlassContainer>
               <GlassContainer spacing={10}>
                 <Chip label="Share" onPress={share}>
-                  <SymbolView name="square.and.arrow.up" size={18} tintColor="#fff" />
-                  <Text className="text-base text-white" style={{ fontFamily: 'DM Sans' }}>
+                  <SymbolView name="square.and.arrow.up" size={18} tintColor="#fff" weight="semibold" />
+                  <Text className="text-base text-white" style={styles.chipLabel}>
                     Share
                   </Text>
                 </Chip>
               </GlassContainer>
             </View>
-          </View>
+          </>
         ) : null}
       </GestureHandlerRootView>
     </Modal>
@@ -309,9 +306,10 @@ function Chip({
         className="h-11 flex-row items-center justify-center gap-1.5 px-4"
         colorScheme="dark"
         fill={false}
-        glassEffectStyle="clear"
+        glassEffectStyle="regular"
+        tintColor="rgba(0,0,0,0.38)"
         isInteractive={!disabled}
-        style={{ borderRadius: 999 }}>
+        style={styles.chipGlass}>
         <View style={{ opacity: disabled ? 0.35 : 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {children}
         </View>
@@ -432,13 +430,36 @@ function clamp01(n: number) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   photoBox: { position: 'absolute', overflow: 'hidden' },
-  chrome: {
-    ...StyleSheet.absoluteFill,
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    alignItems: 'center',
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  bottomBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   tools: { flexDirection: 'row' },
+  chipGlass: {
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.42)',
+  },
+  chipLabel: {
+    fontFamily: 'DM Sans',
+    textShadowColor: 'rgba(0,0,0,0.65)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 1 },
+  },
   captionWrap: {
     position: 'absolute',
     maxWidth: 280,
