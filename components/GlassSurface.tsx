@@ -14,6 +14,7 @@ type Props = {
   fill?: boolean;
   tintColor?: string;
   glassEffectStyle?: GlassStyle;
+  colorScheme?: 'auto' | 'light' | 'dark';
 };
 
 export function GlassSurface({
@@ -24,9 +25,10 @@ export function GlassSurface({
   fill = true,
   glassEffectStyle = 'regular',
   tintColor,
+  colorScheme = 'auto',
 }: Props) {
   const { theme } = useUniwind();
-  const dark = theme === 'dark';
+  const dark = colorScheme === 'auto' ? theme === 'dark' : colorScheme === 'dark';
   const wash = dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.58)';
   const rim = dark ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.72)';
   const inner = <View className={className}>{children}</View>;

@@ -41,6 +41,13 @@
         {
           "microphonePermission": "Pinnacle uses the mic so you can explain a workout out loud."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pinnacle uses the camera so you can take photos during a live workout.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {

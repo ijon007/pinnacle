@@ -19,12 +19,12 @@ export default function TabLayout() {
           default: { color: idleIcon },
           selected: { color: CHERRY },
         }}>
-        <NativeTabs.Trigger name="shots" disableAutomaticContentInsets>
+        <NativeTabs.Trigger name="live" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon
             sf={{ default: 'record.circle.fill', selected: 'record.circle.fill' }}
             md={{ default: 'timer', selected: 'timer' }}
           />
-          <NativeTabs.Trigger.Label>Shots</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Live</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="logs" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon
