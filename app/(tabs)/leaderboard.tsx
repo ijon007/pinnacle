@@ -53,13 +53,7 @@ export default function LeaderboardScreen() {
               accessibilityRole="button"
               accessibilityLabel={`${person.rank}, ${person.handle}, ${person.workouts} workouts`}
               onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-              style={({ pressed }) => ({
-                backgroundColor: person.you
-                  ? youWash
-                  : pressed
-                    ? 'rgba(127,127,127,0.14)'
-                    : undefined,
-              })}>
+              style={person.you ? { backgroundColor: youWash } : undefined}>
               <Row person={person} ink={ink} />
             </Pressable>
           </View>

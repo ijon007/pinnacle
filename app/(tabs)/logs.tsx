@@ -118,21 +118,18 @@ export default function LogsScreen() {
         ))}
       </View>
 
-      <View style={styles.group} className="bg-card">
+      <GlassSurface fill={false} isInteractive={false} style={styles.group}>
         {sessions.map((session, i) => (
           <View key={session.id}>
             {i > 0 ? <View className="ml-14 bg-border" style={styles.rule} /> : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`${session.name}, ${session.time}, ${session.detail}`}
-              onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-              style={({ pressed }) => ({
-                backgroundColor: pressed ? 'rgba(127,127,127,0.14)' : undefined,
-              })}>
+              onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
               <View className="flex-row items-center gap-3.5 px-4 py-[14px]">
                 <SymbolView name={session.symbol} size={22} tintColor={icon} weight="medium" />
                 <View className="min-w-0 flex-1">
-                  <Text className="text-base text-card-foreground" style={{ fontFamily: 'DM Sans' }}>
+                  <Text className="text-base text-foreground" style={{ fontFamily: 'DM Sans' }}>
                     {session.name}
                   </Text>
                   <Text
@@ -149,7 +146,7 @@ export default function LogsScreen() {
             </Pressable>
           </View>
         ))}
-      </View>
+      </GlassSurface>
       <View className="h-24" />
     </TabScreen>
       <VoiceLogSheet
@@ -178,9 +175,9 @@ export default function LogsScreen() {
 
 const styles = StyleSheet.create({
   group: {
+    alignSelf: 'stretch',
     borderCurve: 'continuous',
     borderRadius: 22,
-    overflow: 'hidden',
   },
   rule: {
     height: StyleSheet.hairlineWidth,
