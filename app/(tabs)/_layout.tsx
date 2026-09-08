@@ -14,34 +14,38 @@ export default function TabLayout() {
     <TabBarMinimizeProvider>
       <NativeTabs
         minimizeBehavior="never"
-        iconColor={{ default: idleIcon, selected: CHERRY }}>
+        iconColor={{ default: idleIcon, selected: CHERRY }}
+        labelStyle={{
+          default: { color: idleIcon },
+          selected: { color: CHERRY },
+        }}>
+        <NativeTabs.Trigger name="shots" disableAutomaticContentInsets>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: 'record.circle.fill', selected: 'record.circle.fill' }}
+            md={{ default: 'timer', selected: 'timer' }}
+          />
+          <NativeTabs.Trigger.Label>Shots</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
         <NativeTabs.Trigger name="logs" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon
-            sf={{ default: 'list.clipboard', selected: 'list.clipboard.fill' }}
-            md={{ default: 'assignment', selected: 'assignment' }}
+            sf={{ default: 'book.fill', selected: 'book.fill' }}
+            md={{ default: 'menu_book', selected: 'menu_book' }}
           />
-          <NativeTabs.Trigger.Label hidden />
+          <NativeTabs.Trigger.Label>Logs</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="leaderboard" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon
-            sf={{ default: 'trophy', selected: 'trophy.fill' }}
+            sf={{ default: 'medal.fill', selected: 'medal.fill' }}
             md={{ default: 'emoji_events', selected: 'emoji_events' }}
           />
-          <NativeTabs.Trigger.Label hidden />
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="shots" disableAutomaticContentInsets>
-          <NativeTabs.Trigger.Icon
-            sf={{ default: 'camera', selected: 'camera.fill' }}
-            md={{ default: 'photo_camera', selected: 'photo_camera' }}
-          />
-          <NativeTabs.Trigger.Label hidden />
+          <NativeTabs.Trigger.Label>Ranks</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon
-            sf={{ default: 'person', selected: 'person.fill' }}
+            sf={{ default: 'person.crop.circle.fill', selected: 'person.crop.circle.fill' }}
             md={{ default: 'person', selected: 'person' }}
           />
-          <NativeTabs.Trigger.Label hidden />
+          <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     </TabBarMinimizeProvider>

@@ -6,7 +6,7 @@ import { TabScreen } from '@/components/TabScreen';
 
 export default function ShotsScreen() {
   return (
-    <TabScreen title="Shots" subtitle="Capture, edit, and share.">
+    <TabScreen title="Shots" subtitle="Start a session, log time, shoot as you go.">
       <GlassContainer spacing={12}>
         <View className="flex-row gap-3">
           <GlassSurface className="flex-1 items-center rounded-lg p-5" isInteractive>
