@@ -35,6 +35,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Pinnacle uses the mic so you can explain a workout out loud."
+        }
       ]
     ],
     "experiments": {

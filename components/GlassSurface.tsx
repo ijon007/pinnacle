@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { GlassView, isLiquidGlassAvailable, type GlassStyle } from 'expo-glass-effect';
 import type { ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { View } from 'react-native';
@@ -10,22 +10,43 @@ type Props = {
   className?: string;
   style?: StyleProp<ViewStyle>;
   isInteractive?: boolean;
+  /** Painted wash on top of glass. Off for controls so the material can show. */
+  fill?: boolean;
+  tintColor?: string;
+  glassEffectStyle?: GlassStyle;
 };
 
-export function GlassSurface({ children, className, style, isInteractive = true }: Props) {
+export function GlassSurface({
+  children,
+  className,
+  style,
+  isInteractive = true,
+  fill = true,
+  glassEffectStyle = 'regular',
+  tintColor,
+}: Props) {
   const { theme } = useUniwind();
   const dark = theme === 'dark';
-  const fill = dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.58)';
+  const wash = dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.58)';
   const rim = dark ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.72)';
-  const shellStyle = [styles.shell, { backgroundColor: fill, borderColor: rim }, style];
   const inner = <View className={className}>{children}</View>;
+  const glass = isLiquidGlassAvailable();
+  const shellStyle = [
+    styles.shell,
+    fill || !glass
+      ? { backgroundColor: tintColor ?? wash, borderColor: rim }
+      : { borderWidth: 0 },
+    style,
+  ];
 
-  if (isLiquidGlassAvailable()) {
+  if (glass) {
     return (
       <GlassView
-        glassEffectStyle="regular"
+        collapsable={false}
+        glassEffectStyle={glassEffectStyle}
         isInteractive={isInteractive}
         colorScheme={dark ? 'dark' : 'light'}
+        tintColor={tintColor}
         style={shellStyle}>
         {inner}
       </GlassView>
@@ -33,7 +54,7 @@ export function GlassSurface({ children, className, style, isInteractive = true 
   }
 
   return (
-    <BlurView intensity={70} tint={dark ? 'dark' : 'light'} style={shellStyle}>
+    <BlurView intensity={fill ? 70 : 40} tint={dark ? 'dark' : 'light'} style={shellStyle}>
       {inner}
     </BlurView>
   );

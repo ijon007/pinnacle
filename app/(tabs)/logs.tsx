@@ -1,10 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useUniwind } from 'uniwind';
 
 import { GlassSurface } from '@/components/GlassSurface';
 import { TabScreen } from '@/components/TabScreen';
+import { VoiceLogSheet } from '@/components/VoiceLogSheet';
 import { CHERRY } from '@/lib/theme';
 
 const WEEK = [
@@ -44,15 +46,19 @@ export default function LogsScreen() {
   const { theme } = useUniwind();
   const dark = theme === 'dark';
   const icon = dark ? '#fff' : '#1c1c1c';
+  const [logOpen, setLogOpen] = useState(false);
+  const [sessions, setSessions] = useState(SESSIONS);
 
   return (
-    <TabScreen
+    <>
+      <TabScreen
       title="Logs"
       action={
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="New log"
           onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+          onPress={() => setLogOpen(true)}
           style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
           <GlassSurface
             className="h-11 w-11 items-center justify-center rounded-full"
@@ -70,7 +76,7 @@ export default function LogsScreen() {
             paddingTop: 10,
             letterSpacing: -1.2,
           }}>
-          2
+          {sessions.length}
         </Text>
         <Text className="text-sm text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
           sessions this week
@@ -113,7 +119,7 @@ export default function LogsScreen() {
       </View>
 
       <View style={styles.group} className="bg-card">
-        {SESSIONS.map((session, i) => (
+        {sessions.map((session, i) => (
           <View key={session.id}>
             {i > 0 ? <View className="ml-14 bg-border" style={styles.rule} /> : null}
             <Pressable
@@ -146,6 +152,27 @@ export default function LogsScreen() {
       </View>
       <View className="h-24" />
     </TabScreen>
+      <VoiceLogSheet
+        visible={logOpen}
+        onClose={() => setLogOpen(false)}
+        onLogged={({ durationMillis }) => {
+          const mins = Math.max(1, Math.round(durationMillis / 60000));
+          setSessions((prev) => [
+            {
+              id: String(Date.now()),
+              name: 'Spoken log',
+              detail: 'Today · voice',
+              time:
+                durationMillis < 60000
+                  ? `${Math.max(1, Math.round(durationMillis / 1000))}s`
+                  : `${mins}m`,
+              symbol: 'mic.fill',
+            },
+            ...prev,
+          ]);
+        }}
+      />
+    </>
   );
 }
 
