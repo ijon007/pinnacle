@@ -48,6 +48,12 @@
           "cameraPermission": "Pinnacle uses the camera so you can take photos during a live workout.",
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pinnacle uses your location to track a live run."
+        }
       ]
     ],
     "experiments": {
