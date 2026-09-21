@@ -24,7 +24,7 @@ export function TabScreen({ title, subtitle, action, children }: Props) {
       contentContainerStyle={{ paddingTop: insets.top + 4 }}>
       <View className="flex-row items-center justify-between">
         <Text
-          className="text-4xl tracking-tight text-foreground"
+          className="shrink text-4xl tracking-tight text-foreground"
           style={{ fontFamily: 'Instrument Serif' }}>
           {title}
         </Text>

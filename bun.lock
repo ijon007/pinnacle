@@ -4,6 +4,7 @@
     "": {
       "name": "pinnacle",
       "dependencies": {
+        "@expo/ui": "~57.0.16",
         "expo": "~57.0.20",
         "expo-audio": "~57.0.4",
         "expo-blur": "~57.0.2",

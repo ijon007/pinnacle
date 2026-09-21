@@ -1,3 +1,4 @@
+import { Host, Picker } from '@expo/ui';
 import * as Haptics from 'expo-haptics';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useState } from 'react';
@@ -19,26 +20,181 @@ const WEEK = [
   { d: 'S', n: 12, on: false, today: false },
 ] as const;
 
-const SESSIONS: {
+type RangeId = 'week' | 'prevMonth' | 'threeMonths' | 'year';
+/** Bucket a session falls in. Lookback ranges include the nearer buckets. */
+type Window = 'week' | 'prevMonth' | 'quarter' | 'year';
+
+const RANGES: { id: RangeId; label: string; scope: string }[] = [
+  { id: 'week', label: 'This week', scope: 'this week' },
+  { id: 'prevMonth', label: 'Prev month', scope: 'last month' },
+  { id: 'threeMonths', label: '3 months', scope: 'in 3 months' },
+  { id: 'year', label: '1 year', scope: 'this year' },
+];
+
+type Kind = 'lift' | 'run' | 'swim' | 'ride' | 'cardio' | 'voice';
+
+const KIND_LABEL: Record<Kind, string> = {
+  lift: 'lift',
+  run: 'run',
+  swim: 'swim',
+  ride: 'ride',
+  cardio: 'cardio',
+  voice: 'voice',
+};
+
+const MIX = [CHERRY, 'rgba(210,10,46,0.55)', 'rgba(210,10,46,0.32)', 'rgba(127,127,127,0.5)', 'rgba(127,127,127,0.32)'];
+
+type Session = {
   id: string;
   name: string;
   detail: string;
   time: string;
+  minutes: number;
+  km?: number;
   symbol: SFSymbol;
-}[] = [
+  kind: Kind;
+  window: Window;
+};
+
+function formatMinutes(total: number) {
+  const minutes = Math.max(0, Math.round(total));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest}m`;
+  if (rest === 0) return `${hours}h`;
+  return `${hours}h ${rest}m`;
+}
+
+function sumMinutes(sessions: Session[]) {
+  return sessions.reduce((sum, session) => sum + session.minutes, 0);
+}
+
+function mix(sessions: Session[]) {
+  const byKind = new Map<Kind, number>();
+  for (const session of sessions) {
+    byKind.set(session.kind, (byKind.get(session.kind) ?? 0) + session.minutes);
+  }
+  return [...byKind.entries()].filter(([, amount]) => amount > 0).sort((a, b) => b[1] - a[1]);
+}
+
+function formatKm(km: number) {
+  const rounded = Math.round(km * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function distanceOf(sessions: Session[]) {
+  const moving = sessions.filter((session) => (session.km ?? 0) > 0);
+  const km = moving.reduce((sum, session) => sum + (session.km ?? 0), 0);
+  const runs = moving.filter((session) => session.kind === 'run').length;
+  const rides = moving.filter((session) => session.kind === 'ride').length;
+  const bits = [
+    runs ? `${runs} ${runs === 1 ? 'run' : 'runs'}` : '',
+    rides ? `${rides} ${rides === 1 ? 'ride' : 'rides'}` : '',
+  ].filter(Boolean);
+  return { km, note: bits.join(' · ') };
+}
+
+function inRange(window: Window, range: RangeId) {
+  if (range === 'week') return window === 'week';
+  if (range === 'prevMonth') return window === 'prevMonth';
+  if (range === 'threeMonths') return window !== 'year';
+  return true;
+}
+
+const SESSIONS: Session[] = [
   {
     id: '1',
     name: 'Upper',
     detail: 'Today · 6 exercises · 18 sets',
     time: '52m',
+    minutes: 52,
     symbol: 'figure.strengthtraining.traditional',
+    kind: 'lift',
+    window: 'week',
   },
   {
     id: '2',
     name: 'Run',
     detail: 'Mon · 4.2 km · 5:52/km',
     time: '28m',
+    minutes: 28,
+    km: 4.2,
     symbol: 'figure.run',
+    kind: 'run',
+    window: 'week',
+  },
+  {
+    id: '3',
+    name: 'Swim',
+    detail: 'Aug 28 · 40 lengths',
+    time: '36m',
+    minutes: 36,
+    symbol: 'figure.pool.swim',
+    kind: 'swim',
+    window: 'prevMonth',
+  },
+  {
+    id: '4',
+    name: 'Lower',
+    detail: 'Aug 12 · 5 exercises · 14 sets',
+    time: '40m',
+    minutes: 40,
+    symbol: 'figure.strengthtraining.traditional',
+    kind: 'lift',
+    window: 'prevMonth',
+  },
+  {
+    id: '5',
+    name: 'Run',
+    detail: 'Aug 3 · 6.1 km · 6:10/km',
+    time: '1h 2m',
+    minutes: 62,
+    km: 6.1,
+    symbol: 'figure.run',
+    kind: 'run',
+    window: 'prevMonth',
+  },
+  {
+    id: '6',
+    name: 'Legs',
+    detail: 'Jul 18 · 4 exercises · 12 sets',
+    time: '44m',
+    minutes: 44,
+    symbol: 'figure.strengthtraining.traditional',
+    kind: 'lift',
+    window: 'quarter',
+  },
+  {
+    id: '7',
+    name: 'Ride',
+    detail: 'Jun 30 · 18 km',
+    time: '46m',
+    minutes: 46,
+    km: 18,
+    symbol: 'figure.outdoor.cycle',
+    kind: 'ride',
+    window: 'quarter',
+  },
+  {
+    id: '8',
+    name: 'Hyrox',
+    detail: 'Mar 2 · 8 stations',
+    time: '1h 4m',
+    minutes: 64,
+    symbol: 'figure.mixed.cardio',
+    kind: 'cardio',
+    window: 'year',
+  },
+  {
+    id: '9',
+    name: 'Long run',
+    detail: 'Jan 14 · 12.4 km',
+    time: '1h 18m',
+    minutes: 78,
+    km: 12.4,
+    symbol: 'figure.run',
+    kind: 'run',
+    window: 'year',
   },
 ];
 
@@ -47,27 +203,54 @@ export default function LogsScreen() {
   const dark = theme === 'dark';
   const icon = dark ? '#fff' : '#1c1c1c';
   const [logOpen, setLogOpen] = useState(false);
+  const [range, setRange] = useState<RangeId>('week');
   const [sessions, setSessions] = useState(SESSIONS);
+  const visible = sessions.filter((session) => inRange(session.window, range));
+  const scope = RANGES.find((item) => item.id === range)?.scope ?? 'this week';
+  const noun = visible.length === 1 ? 'session' : 'sessions';
+  const minutes = sumMinutes(visible);
+  const parts = mix(visible);
+  const lead = parts[0];
+  const mixLabel = lead ? `Mostly ${KIND_LABEL[lead[0]]} · ${formatMinutes(lead[1])}` : 'No time logged';
+  const distance = distanceOf(visible);
 
   return (
     <>
       <TabScreen
-      title="Logs"
-      action={
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="New log"
-          onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          onPress={() => setLogOpen(true)}
-          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
-          <GlassSurface
-            className="h-11 w-11 items-center justify-center rounded-full"
-            style={{ borderRadius: 999 }}>
-            <SymbolView name="plus" size={20} tintColor={CHERRY} weight="semibold" />
-          </GlassSurface>
-        </Pressable>
-      }>
-      <View className="">
+        title="Logs"
+        action={
+          <View className="flex-row items-center gap-3">
+            <Host
+              matchContents
+              seedColor={CHERRY}
+              colorScheme={dark ? 'dark' : 'light'}
+              ignoreSafeArea="all">
+              <Picker
+                selectedValue={range}
+                onValueChange={(value) => {
+                  if (value === range) return;
+                  setRange(value);
+                }}>
+                {RANGES.map((item) => (
+                  <Picker.Item key={item.id} label={item.label} value={item.id} />
+                ))}
+              </Picker>
+            </Host>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="New log"
+              onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => setLogOpen(true)}
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+              <GlassSurface
+                className="h-11 w-11 items-center justify-center rounded-full"
+                style={{ borderRadius: 999 }}>
+                <SymbolView name="plus" size={20} tintColor={CHERRY} weight="semibold" />
+              </GlassSurface>
+            </Pressable>
+          </View>
+        }>
+      <View>
         <Text
           className="text-6xl tracking-tight text-foreground"
           style={{
@@ -76,10 +259,10 @@ export default function LogsScreen() {
             paddingTop: 10,
             letterSpacing: -1.2,
           }}>
-          {sessions.length}
+          {visible.length}
         </Text>
         <Text className="text-sm text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
-          sessions this week
+          {noun} {scope}
         </Text>
       </View>
 
@@ -119,7 +302,62 @@ export default function LogsScreen() {
       </View>
 
       <GlassSurface fill={false} isInteractive={false} style={styles.group}>
-        {sessions.map((session, i) => (
+        <View className="gap-3 px-4 py-4">
+          <View className="flex-row items-baseline justify-between">
+            <Text className="text-sm text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+              Time
+            </Text>
+            <Text
+              className="text-3xl tracking-tight text-foreground"
+              style={{ fontFamily: 'Instrument Serif', letterSpacing: -0.6 }}>
+              {formatMinutes(minutes)}
+            </Text>
+          </View>
+          <View
+            accessibilityRole="image"
+            accessibilityLabel={
+              parts.length
+                ? parts.map(([kind, amount]) => `${KIND_LABEL[kind]} ${formatMinutes(amount)}`).join(', ')
+                : 'No time logged'
+            }
+            className="h-2 flex-row overflow-hidden rounded-full bg-muted">
+            {parts.map(([kind, amount], index) => (
+              <View key={kind} style={{ flex: amount, backgroundColor: MIX[index] ?? MIX[MIX.length - 1] }} />
+            ))}
+          </View>
+          <Text className="text-[13px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+            {mixLabel}
+          </Text>
+        </View>
+      </GlassSurface>
+
+      <GlassSurface fill={false} isInteractive={false} style={styles.group}>
+        <View className="flex-row items-center gap-3 px-4 py-4">
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+              Distance
+            </Text>
+            <Text
+              className="mt-0.5 text-[13px] text-muted-foreground"
+              style={{ fontFamily: 'DM Sans' }}
+              numberOfLines={1}>
+              {distance.note || 'No distance logged'}
+            </Text>
+          </View>
+          <Text
+            className="text-3xl tracking-tight text-foreground"
+            style={{ fontFamily: 'Instrument Serif', letterSpacing: -0.6 }}>
+            {formatKm(distance.km)}
+            <Text className="text-base text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+              {' '}
+              km
+            </Text>
+          </Text>
+        </View>
+      </GlassSurface>
+
+      <GlassSurface fill={false} isInteractive={false} style={styles.group}>
+        {visible.map((session, i) => (
           <View key={session.id}>
             {i > 0 ? <View className="ml-14 bg-border" style={styles.rule} /> : null}
             <Pressable
@@ -163,7 +401,10 @@ export default function LogsScreen() {
                 durationMillis < 60000
                   ? `${Math.max(1, Math.round(durationMillis / 1000))}s`
                   : `${mins}m`,
+              minutes: Math.round(durationMillis / 60000),
               symbol: 'mic.fill',
+              kind: 'voice',
+              window: 'week',
             },
             ...prev,
           ]);
