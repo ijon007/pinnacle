@@ -44,6 +44,10 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="edit-profile"
+            options={{ headerShown: false, animation: 'slide_from_right', gestureEnabled: true }}
+          />
         </Stack>
       </View>
       </SafeAreaProvider>

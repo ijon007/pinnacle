@@ -54,6 +54,12 @@
         {
           "locationWhenInUsePermission": "Pinnacle uses your location to track a live run."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pinnacle uses your photos so you can set a profile picture."
+        }
       ]
     ],
     "experiments": {
