@@ -1,14 +1,18 @@
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import MapView from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useUniwind } from 'uniwind';
 
 import { GlassSurface } from '@/components/GlassSurface';
 import { LiveCamera } from '@/components/LiveCamera';
 import { LiveRun } from '@/components/LiveRun';
 import { PhotoEditor, type PhotoOrigin } from '@/components/PhotoEditor';
 import { TabScreen } from '@/components/TabScreen';
-import { formatKm, formatPace, type GeoPoint } from '@/lib/run';
+import { formatKm, formatPace, mapCamera, MAP_POI, type GeoPoint } from '@/lib/run';
 import { formatDuration, newId, packColumns, type Shot } from '@/lib/session';
 
 type Kind = 'workout' | 'run';
@@ -32,6 +36,10 @@ export default function LiveScreen() {
   const [editing, setEditing] = useState<Shot | null>(null);
   const [origin, setOrigin] = useState<PhotoOrigin>({ x: 0, y: 0, w: 0, h: 0 });
   const thumbs = useRef<Record<string, View | null>>({});
+  const map = useRef<MapView>(null);
+  const insets = useSafeAreaInsets();
+  const { theme } = useUniwind();
+  const [locPerm, requestLocPerm] = Location.useForegroundPermissions();
 
   useEffect(() => {
     if (phase !== 'live') return;
@@ -39,6 +47,42 @@ export default function LiveScreen() {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, [phase]);
+
+  useEffect(() => {
+    if (phase !== 'idle') return;
+    if (locPerm && !locPerm.granted && locPerm.canAskAgain) void requestLocPerm();
+  }, [phase, locPerm, requestLocPerm]);
+
+  useEffect(() => {
+    if (phase !== 'idle' || !locPerm?.granted) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cached = await Location.getLastKnownPositionAsync({
+          maxAge: 300_000,
+          requiredAccuracy: 1000,
+        });
+        const here =
+          cached ??
+          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+        if (cancelled || !here) return;
+        const heading = here.coords.heading;
+        map.current?.animateCamera(
+          mapCamera(
+            here.coords.latitude,
+            here.coords.longitude,
+            heading != null && heading >= 0 ? heading : 0,
+          ),
+          { duration: 0 },
+        );
+      } catch {
+        // ponytail: first open with no cache / GPS cold start — blue dot still paints
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, locPerm?.granted]);
 
   const start = (next: Kind) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -163,34 +207,52 @@ export default function LiveScreen() {
 
   return (
     <>
-      <TabScreen title="Live" subtitle="Gym with photos, or a run with GPS.">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Start live workout"
-          onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          onPress={() => start('workout')}
-          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
-          <GlassSurface className="flex-row items-center justify-center gap-3 py-5">
-            <SymbolView name="record.circle" size={28} tintColor="#d20a2e" />
-            <Text className="text-3xl tracking-tight text-foreground" style={{ fontFamily: 'Instrument Serif' }}>
-              Workout
-            </Text>
-          </GlassSurface>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Start live run"
-          onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          onPress={() => start('run')}
-          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
-          <GlassSurface className="flex-row items-center justify-center gap-3 py-5">
-            <SymbolView name="figure.run" size={28} tintColor="#d20a2e" />
-            <Text className="text-3xl tracking-tight text-foreground" style={{ fontFamily: 'Instrument Serif' }}>
-              Run
-            </Text>
-          </GlassSurface>
-        </Pressable>
-      </TabScreen>
+      <View style={styles.fill} className="bg-background">
+        <MapView
+          ref={map}
+          style={StyleSheet.absoluteFill}
+          showsUserLocation={!!locPerm?.granted}
+          showsMyLocationButton={false}
+          showsCompass={false}
+          showsBuildings
+          showsPointsOfInterests
+          pointsOfInterestFilter={[...MAP_POI]}
+          rotateEnabled
+          pitchEnabled
+          scrollEnabled
+          zoomEnabled
+          toolbarEnabled={false}
+          userInterfaceStyle={theme === 'dark' ? 'dark' : 'light'}
+        />
+        <View pointerEvents="box-none" style={[styles.dock, { paddingBottom: insets.bottom + 56 }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start live workout"
+            onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            onPress={() => start('workout')}
+            style={({ pressed }) => [{ flex: 1 }, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+            <GlassSurface className="flex-row items-center justify-center gap-2 py-4" fill={false}>
+              <SymbolView name="record.circle" size={22} tintColor="#d20a2e" />
+              <Text className="text-2xl tracking-tight text-foreground" style={{ fontFamily: 'Instrument Serif' }}>
+                Workout
+              </Text>
+            </GlassSurface>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start live run"
+            onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            onPress={() => start('run')}
+            style={({ pressed }) => [{ flex: 1 }, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+            <GlassSurface className="flex-row items-center justify-center gap-2 py-4" fill={false}>
+              <SymbolView name="figure.run" size={22} tintColor="#d20a2e" />
+              <Text className="text-2xl tracking-tight text-foreground" style={{ fontFamily: 'Instrument Serif' }}>
+                Run
+              </Text>
+            </GlassSurface>
+          </Pressable>
+        </View>
+      </View>
       {phase === 'live' && kind === 'workout' ? (
         <LiveCamera
           startedAt={startedAt}
@@ -265,6 +327,15 @@ function ShotMasonry({
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  dock: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 10,
+  },
   stats: {
     flexDirection: 'row',
     alignSelf: 'stretch',

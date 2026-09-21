@@ -20,23 +20,12 @@ import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-
 import { useUniwind } from 'uniwind';
 
 import { GlassSurface } from '@/components/GlassSurface';
-import { foldFix, formatKm, formatPace, movingElapsed, type GeoPoint } from '@/lib/run';
+import { foldFix, formatKm, formatPace, mapCamera, movingElapsed, MAP_POI, type GeoPoint } from '@/lib/run';
 import { formatDuration, picUri } from '@/lib/session';
 import { CHERRY } from '@/lib/theme';
 
-const CAM_PITCH = 52;
-const CAM_ALT = 650;
 const SNAP = { duration: 380, dampingRatio: 1, reduceMotion: ReduceMotion.System } as const;
 const FADE = { duration: 220, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.System } as const;
-
-function cameraAt(lat: number, lng: number, heading: number) {
-  return {
-    center: { latitude: lat, longitude: lng },
-    pitch: CAM_PITCH,
-    heading,
-    altitude: CAM_ALT,
-  };
-}
 
 function course(deg: number | null | undefined, fallback: number) {
   if (deg == null || !Number.isFinite(deg) || deg < 0) return fallback;
@@ -114,7 +103,7 @@ export function LiveRun({
       }
       if (followingRef.current) {
         map.current?.animateCamera(
-          cameraAt(loc.coords.latitude, loc.coords.longitude, headingRef.current),
+          mapCamera(loc.coords.latitude, loc.coords.longitude, headingRef.current),
           { duration: 350 },
         );
       }
@@ -146,7 +135,7 @@ export function LiveRun({
       if (cached) {
         headingRef.current = course(cached.coords.heading, headingRef.current);
         map.current?.animateCamera(
-          cameraAt(cached.coords.latitude, cached.coords.longitude, headingRef.current),
+          mapCamera(cached.coords.latitude, cached.coords.longitude, headingRef.current),
           { duration: 0 },
         );
         ingest(cached);
@@ -203,7 +192,7 @@ export function LiveRun({
     setFollowing(true);
     const tip = path.at(-1);
     if (!tip) return;
-    map.current?.animateCamera(cameraAt(tip.lat, tip.lng, headingRef.current), { duration: 280 });
+    map.current?.animateCamera(mapCamera(tip.lat, tip.lng, headingRef.current), { duration: 280 });
   };
 
   const buryLens = () => setLens(false);
@@ -286,11 +275,13 @@ export function LiveRun({
         <MapView
           ref={map}
           style={StyleSheet.absoluteFill}
-          initialCamera={start ? cameraAt(start.lat, start.lng, headingRef.current) : undefined}
+          initialCamera={start ? mapCamera(start.lat, start.lng, headingRef.current) : undefined}
           showsUserLocation={!!permission?.granted}
           showsMyLocationButton={false}
           showsCompass
-          showsPointsOfInterests={false}
+          showsBuildings
+          showsPointsOfInterests
+          pointsOfInterestFilter={[...MAP_POI]}
           legalLabelInsets={{ top: 0, right: 0, bottom: -80, left: 0 }}
           rotateEnabled
           pitchEnabled

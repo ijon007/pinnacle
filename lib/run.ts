@@ -4,6 +4,38 @@ export type GeoPoint = {
   t: number;
 };
 
+export const MAP_PITCH = 52;
+export const MAP_ALT = 650;
+/** Apple Maps only — include list, everything else stays off. */
+export const MAP_POI = [
+  'fitnessCenter',
+  'stadium',
+  'park',
+  'nationalPark',
+  'hiking',
+  'swimming',
+  'tennis',
+  'basketball',
+  'baseball',
+  'golf',
+  'miniGolf',
+  'bowling',
+  'skating',
+  'skatePark',
+  'skiing',
+  'beach',
+  'campground',
+] as const;
+
+export function mapCamera(lat: number, lng: number, heading = 0) {
+  return {
+    center: { latitude: lat, longitude: lng },
+    pitch: MAP_PITCH,
+    heading,
+    altitude: MAP_ALT,
+  };
+}
+
 const EARTH_M = 6_371_000;
 const MIN_STEP_M = 1;
 const MAX_ACC_M = 65;
