@@ -22,16 +22,18 @@ import Animated, {
   interpolate,
   ReduceMotion,
   runOnJS,
+  type SharedValue,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/GlassSurface';
 import { StickerSheet } from '@/components/StickerSheet';
-import { stickerDef, TEXT_STYLES, textStyleDef } from '@/lib/photoOverlays';
+import { stickerDef, TEXT_COLORS, TEXT_STYLES, textLook } from '@/lib/photoOverlays';
 import { newId, type Overlay, type Shot, type StickerKind, type TextStyleId } from '@/lib/session';
 import { rubberband } from '@/lib/sheetPhysics';
 
@@ -55,11 +57,14 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
   const [future, setFuture] = useState<Overlay[][]>([]);
   const [showChrome, setShowChrome] = useState(false);
   const [stickersOpen, setStickersOpen] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
   const dest = fitBox(shot?.width ?? 3, shot?.height ?? 4, winW, winH);
   const inputs = useRef<Record<string, TextInput | null>>({});
   const textBase = useRef<Overlay[] | null>(null);
   const closing = useRef(false);
   const progress = useSharedValue(0);
+  const kbH = useSharedValue(0);
+  const trash = useSharedValue(0);
   const sx0 = useSharedValue(1);
   const sy0 = useSharedValue(1);
   const tx0 = useSharedValue(0);
@@ -92,6 +97,26 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
     });
   }, [shot?.id]);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      setKbOpen(true);
+      kbH.value = withTiming(e.endCoordinates.height, {
+        duration: Platform.OS === 'ios' ? e.duration : 180,
+      });
+    });
+    const hide = Keyboard.addListener(hideEvent, (e) => {
+      setKbOpen(false);
+      kbH.value = withTiming(0, { duration: Platform.OS === 'ios' ? e.duration : 180 });
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [kbH]);
+
+  const dockBottom = insets.bottom;
   const photoStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: interpolate(progress.value, [0, 1], [tx0.value, 0]) },
@@ -100,11 +125,18 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
       { scaleY: interpolate(progress.value, [0, 1], [sy0.value, 1]) },
     ],
   }));
+  const dockStyle = useAnimatedStyle(() => ({
+    bottom: kbH.value > 1 ? kbH.value + 8 : dockBottom + 16,
+  }));
+  const trashStyle = useAnimatedStyle(() => ({
+    opacity: trash.value,
+    transform: [{ scale: interpolate(trash.value, [0, 1], [0.86, 1]) }],
+  }));
 
   if (!shot) return null;
 
   const selected = shot.overlays.find((o) => o.id === selectedId) ?? null;
-  const editingText = selected?.kind === 'text';
+  const editingText = kbOpen && selected?.kind === 'text';
 
   const finishClose = () => {
     closing.current = false;
@@ -162,6 +194,7 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
       style: 'classic',
       nx: 0.5,
       ny: 0.5,
+      color: '#ffffff',
       scale: 1,
       rotation: 0,
     };
@@ -182,6 +215,7 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
       style: 'classic',
       nx: 0.5,
       ny: 0.42,
+      color: '#ffffff',
       scale: 1,
       rotation: 0,
     };
@@ -199,6 +233,18 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
     if (!selected || selected.kind !== 'text') return;
     void Haptics.selectionAsync();
     patch(selected.id, { style }, true);
+  };
+
+  const setTextColor = (color: string) => {
+    if (!selected || selected.kind !== 'text') return;
+    void Haptics.selectionAsync();
+    patch(selected.id, { color }, true);
+  };
+
+  const removeOverlay = (id: string) => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSelectedId(null);
+    commit(shot.overlays.filter((o) => o.id !== id));
   };
 
   const dismissEdit = () => {
@@ -248,6 +294,8 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
                 onSelect={() => setSelectedId(overlay.id)}
                 onMove={(nx, ny) => patch(overlay.id, { nx, ny }, true)}
                 onTransform={(scale, rotation) => patch(overlay.id, { scale, rotation }, true)}
+                onDelete={() => removeOverlay(overlay.id)}
+                trash={trash}
               />
             ) : (
               <DraggableCaption
@@ -289,9 +337,16 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
                 onChangeText={(text) => patch(overlay.id, { text }, false)}
                 onMove={(nx, ny) => patch(overlay.id, { nx, ny }, true)}
                 onTransform={(scale, rotation) => patch(overlay.id, { scale, rotation }, true)}
+                onDelete={() => removeOverlay(overlay.id)}
+                trash={trash}
               />
             ),
           )}
+          <Animated.View pointerEvents="none" style={[styles.trash, trashStyle]}>
+            <View style={styles.trashBubble}>
+              <SymbolView name="trash.fill" size={22} tintColor="#fff" />
+            </View>
+          </Animated.View>
         </Animated.View>
 
         {showChrome ? (
@@ -305,29 +360,42 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
                 </Chip>
               </GlassContainer>
               <GlassContainer spacing={10} style={styles.topTools}>
-                <Chip label="Add text" onPress={addText}>
-                  <SymbolView name="textformat" size={16} tintColor="#fff" weight="semibold" />
-                  <Text className="text-base text-white" style={styles.chipLabel}>
-                    Text
-                  </Text>
-                </Chip>
-                <Chip label="Stickers" onPress={() => setStickersOpen(true)}>
-                  <SymbolView name="face.smiling" size={16} tintColor="#fff" weight="semibold" />
-                  <Text className="text-base text-white" style={styles.chipLabel}>
-                    Stickers
-                  </Text>
-                </Chip>
+                {editingText ? (
+                  <Chip label="Done" onPress={() => Keyboard.dismiss()}>
+                    <SymbolView name="checkmark" size={16} tintColor="#fff" weight="semibold" />
+                    <Text className="text-base text-white" style={styles.chipLabel}>
+                      Done
+                    </Text>
+                  </Chip>
+                ) : (
+                  <>
+                    <Chip label="Add text" onPress={addText}>
+                      <SymbolView name="textformat" size={16} tintColor="#fff" weight="semibold" />
+                      <Text className="text-base text-white" style={styles.chipLabel}>
+                        Text
+                      </Text>
+                    </Chip>
+                    <Chip label="Stickers" onPress={() => setStickersOpen(true)}>
+                      <SymbolView name="face.smiling" size={16} tintColor="#fff" weight="semibold" />
+                      <Text className="text-base text-white" style={styles.chipLabel}>
+                        Stickers
+                      </Text>
+                    </Chip>
+                  </>
+                )}
               </GlassContainer>
             </View>
 
             {editingText ? (
-              <View pointerEvents="box-none" style={[styles.styleBar, { bottom: insets.bottom + 18 }]}>
+              <Animated.View pointerEvents="box-none" style={[styles.styleBar, dockStyle]}>
                 <ScrollView
                   horizontal
+                  keyboardShouldPersistTaps="always"
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.styleRow}>
                   {TEXT_STYLES.map((style) => {
                     const on = selected.style === style.id;
+                    const look = textLook(style.id, selected.color || '#ffffff');
                     return (
                       <Pressable
                         key={style.id}
@@ -340,14 +408,42 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
                           on && styles.styleChipOn,
                           { transform: [{ scale: pressed ? 0.96 : 1 }] },
                         ]}>
-                        <View style={style.wrap}>
-                          <Text style={[style.input, styles.stylePreview]}>Aa</Text>
+                        <View style={styles.stylePreviewScale}>
+                          <View style={look.wrap}>
+                            <Text style={look.input}>Aa</Text>
+                          </View>
                         </View>
                       </Pressable>
                     );
                   })}
                 </ScrollView>
-              </View>
+                <ScrollView
+                  horizontal
+                  keyboardShouldPersistTaps="always"
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.colorRow}>
+                  {TEXT_COLORS.map((color) => {
+                    const on = (selected.color || '#ffffff') === color;
+                    return (
+                      <Pressable
+                        key={color}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Color ${color}`}
+                        accessibilityState={{ selected: on }}
+                        onPress={() => setTextColor(color)}
+                        style={({ pressed }) => [
+                          styles.colorDot,
+                          { backgroundColor: color, transform: [{ scale: pressed ? 0.92 : 1 }] },
+                          on && {
+                            borderColor: color === '#ffffff' ? '#161616' : '#fff',
+                            borderWidth: 2,
+                          },
+                        ]}
+                      />
+                    );
+                  })}
+                </ScrollView>
+              </Animated.View>
             ) : (
               <View pointerEvents="box-none" style={styles.bottomBar}>
                 <GlassContainer spacing={12} style={styles.tools}>
@@ -420,38 +516,48 @@ function Chip({
 
 const SCALE_MIN = 0.35;
 const SCALE_MAX = 5;
+const DELETE_AT = 0.86;
+
+function trashHaptic() {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+}
 
 function useDragOverlay(
   overlay: Overlay,
   canvas: { w: number; h: number },
+  trash: SharedValue<number>,
   onSelect: () => void,
   onMove: (nx: number, ny: number) => void,
   onTransform: (scale: number, rotation: number) => void,
+  onDelete: () => void,
 ) {
   const nx = useSharedValue(overlay.nx);
   const ny = useSharedValue(overlay.ny);
-  const scale = useSharedValue(overlay.scale);
-  const rotation = useSharedValue(overlay.rotation);
+  const scale = useSharedValue(overlay.scale || 1);
+  const rotation = useSharedValue(overlay.rotation || 0);
   const originX = useSharedValue(overlay.nx);
   const originY = useSharedValue(overlay.ny);
-  const startScale = useSharedValue(overlay.scale);
-  const startRotation = useSharedValue(overlay.rotation);
+  const startScale = useSharedValue(overlay.scale || 1);
+  const startRotation = useSharedValue(overlay.rotation || 0);
   const fingers = useSharedValue(0);
+  const hot = useSharedValue(0);
   const bw = useSharedValue(80);
   const bh = useSharedValue(32);
 
   useEffect(() => {
     nx.value = overlay.nx;
     ny.value = overlay.ny;
-    scale.value = overlay.scale;
-    rotation.value = overlay.rotation;
+    scale.value = overlay.scale || 1;
+    rotation.value = overlay.rotation || 0;
   }, [nx, ny, scale, rotation, overlay.nx, overlay.ny, overlay.scale, overlay.rotation]);
 
   const flushTransform = () => {
     'worklet';
     const s = clampScale(scale.value);
+    const rot = snapAngle(rotation.value);
     scale.value = s;
-    runOnJS(onTransform)(s, rotation.value);
+    rotation.value = rot;
+    runOnJS(onTransform)(s, rot);
   };
 
   const pan = Gesture.Pan()
@@ -460,6 +566,7 @@ function useDragOverlay(
     .onBegin(() => {
       originX.value = nx.value;
       originY.value = ny.value;
+      hot.value = 0;
       runOnJS(onSelect)();
     })
     .onUpdate((e) => {
@@ -467,13 +574,28 @@ function useDragOverlay(
       const h = canvas.h;
       nx.value = resist(originX.value + e.translationX / w, w);
       ny.value = resist(originY.value + e.translationY / h, h);
+      const over = ny.value > DELETE_AT ? 1 : 0;
+      if (over !== hot.value) {
+        hot.value = over;
+        trash.value = over;
+        if (over) runOnJS(trashHaptic)();
+      }
     })
     .onEnd((e) => {
+      trash.value = 0;
+      if (hot.value) {
+        hot.value = 0;
+        runOnJS(onDelete)();
+        return;
+      }
       const cx = clamp01(nx.value);
       const cy = clamp01(ny.value);
       nx.value = withSpring(cx, { ...SNAP, velocity: e.velocityX / canvas.w });
       ny.value = withSpring(cy, { ...SNAP, velocity: e.velocityY / canvas.h });
       runOnJS(onMove)(cx, cy);
+    })
+    .onFinalize(() => {
+      trash.value = 0;
     });
 
   const pinch = Gesture.Pinch()
@@ -509,7 +631,7 @@ function useDragOverlay(
   const anchorStyle = useAnimatedStyle(() => ({
     left: nx.value * canvas.w,
     top: ny.value * canvas.h,
-    transform: [{ rotate: `${rotation.value}rad` }, { scale: scale.value }],
+    transform: [{ rotate: `${rotation.value}rad` }, { scale: scale.value * (hot.value ? 0.86 : 1) }],
   }));
 
   const bodyStyle = useAnimatedStyle(() => ({
@@ -530,6 +652,8 @@ function DraggableCaption({
   onFocus,
   onBlur,
   onChangeText,
+  onDelete,
+  trash,
 }: {
   overlay: Overlay;
   canvas: { w: number; h: number };
@@ -541,42 +665,50 @@ function DraggableCaption({
   onFocus: () => void;
   onBlur: () => void;
   onChangeText: (text: string) => void;
+  onDelete: () => void;
+  trash: SharedValue<number>;
 }) {
   const { pan, pinch, rotate, anchorStyle, bodyStyle, bw, bh } = useDragOverlay(
     overlay,
     canvas,
+    trash,
     onSelect,
     onMove,
     onTransform,
+    onDelete,
   );
   const tap = Gesture.Tap().onEnd(() => {
     runOnJS(onOpen)();
   });
-  const look = textStyleDef(overlay.style);
+  const look = textLook(overlay.style, overlay.color || '#ffffff');
   const gesture = Gesture.Simultaneous(Gesture.Exclusive(pan, tap), pinch, rotate);
+  const placeholder =
+    look.input.color === '#161616' ? 'rgba(22,22,22,0.35)' : 'rgba(255,255,255,0.45)';
 
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={[styles.overlayAnchor, anchorStyle]}>
         <Animated.View
-          style={[styles.captionWrap, look.wrap, bodyStyle]}
+          style={[styles.hit, bodyStyle]}
           onLayout={(e) => {
             bw.value = e.nativeEvent.layout.width;
             bh.value = e.nativeEvent.layout.height;
           }}>
-          <TextInput
-            ref={inputRef}
-            value={overlay.text}
-            onChangeText={onChangeText}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            placeholder="Text"
-            placeholderTextColor="rgba(255,255,255,0.45)"
-            pointerEvents="none"
-            autoCorrect={false}
-            underlineColorAndroid="transparent"
-            style={[styles.captionBase, look.input]}
-          />
+          <View style={look.wrap}>
+            <TextInput
+              ref={inputRef}
+              value={overlay.text}
+              onChangeText={onChangeText}
+              onFocus={onFocus}
+              onBlur={onBlur}
+              placeholder="Text"
+              placeholderTextColor={placeholder}
+              pointerEvents="none"
+              autoCorrect={false}
+              underlineColorAndroid="transparent"
+              style={[styles.captionBase, look.input]}
+            />
+          </View>
         </Animated.View>
       </Animated.View>
     </GestureDetector>
@@ -590,6 +722,8 @@ function DraggableSticker({
   onSelect,
   onMove,
   onTransform,
+  onDelete,
+  trash,
 }: {
   overlay: Overlay;
   canvas: { w: number; h: number };
@@ -597,13 +731,17 @@ function DraggableSticker({
   onSelect: () => void;
   onMove: (nx: number, ny: number) => void;
   onTransform: (scale: number, rotation: number) => void;
+  onDelete: () => void;
+  trash: SharedValue<number>;
 }) {
   const { pan, pinch, rotate, anchorStyle, bodyStyle, bw, bh } = useDragOverlay(
     overlay,
     canvas,
+    trash,
     onSelect,
     onMove,
     onTransform,
+    onDelete,
   );
   const def = stickerDef(overlay.sticker ?? 'location');
   const iconOnly = !overlay.text;
@@ -651,6 +789,13 @@ function clamp01(n: number) {
   return Math.min(0.92, Math.max(0.08, n));
 }
 
+function snapAngle(rad: number) {
+  'worklet';
+  const step = Math.PI / 2;
+  const nearest = Math.round(rad / step) * step;
+  return Math.abs(rad - nearest) < 0.09 ? nearest : rad;
+}
+
 function clampScale(n: number) {
   'worklet';
   return Math.min(SCALE_MAX, Math.max(SCALE_MIN, n));
@@ -682,6 +827,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    gap: 8,
   },
   styleRow: {
     paddingHorizontal: 16,
@@ -689,13 +835,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   styleChip: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     borderCurve: 'continuous',
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.28)',
+    borderColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -704,10 +850,21 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     borderWidth: 2,
   },
-  stylePreview: {
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: 0,
+  stylePreviewScale: {
+    transform: [{ scale: 0.42 }],
+  },
+  colorRow: {
+    paddingHorizontal: 18,
+    paddingBottom: 4,
+    gap: 10,
+    alignItems: 'center',
+  },
+  colorDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   tools: { flexDirection: 'row' },
   chipGlass: {
@@ -726,6 +883,11 @@ const styles = StyleSheet.create({
   },
   captionWrap: {
     maxWidth: 280,
+    alignItems: 'center',
+  },
+  hit: {
+    maxWidth: 280,
+    padding: 14,
     alignItems: 'center',
   },
   captionBase: {
@@ -760,5 +922,20 @@ const styles = StyleSheet.create({
     fontFamily: 'DM Sans',
     fontSize: 14,
     fontWeight: '600',
+  },
+  trash: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 28,
+    alignItems: 'center',
+  },
+  trashBubble: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(210,10,46,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,4 +1,4 @@
-export type TextStyleId = 'classic' | 'modern' | 'neon' | 'strong' | 'type' | 'outline';
+export type TextStyleId = 'classic' | 'modern' | 'highlight' | 'solid' | 'neon' | 'type';
 
 export type StickerKind = 'location' | 'distance' | 'pace' | 'duration' | 'heart' | 'flame';
 
@@ -10,6 +10,8 @@ export type Overlay = {
   sticker?: StickerKind;
   nx: number;
   ny: number;
+  /** Text / solid-fill color. Default #ffffff. */
+  color: string;
   /** Pinch scale. Default 1. */
   scale: number;
   /** Two-finger rotation in radians. Default 0. */
