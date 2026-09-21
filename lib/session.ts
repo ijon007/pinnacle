@@ -1,8 +1,19 @@
+export type TextStyleId = 'classic' | 'modern' | 'neon' | 'strong' | 'type' | 'outline';
+
+export type StickerKind = 'location' | 'distance' | 'pace' | 'duration' | 'heart' | 'flame';
+
 export type Overlay = {
   id: string;
+  kind: 'text' | 'sticker';
   text: string;
+  style: TextStyleId;
+  sticker?: StickerKind;
   nx: number;
   ny: number;
+  /** Pinch scale. Default 1. */
+  scale: number;
+  /** Two-finger rotation in radians. Default 0. */
+  rotation: number;
 };
 
 export type Shot = {
