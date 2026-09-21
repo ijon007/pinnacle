@@ -1,5 +1,10 @@
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable, type GlassStyle } from 'expo-glass-effect';
+import {
+  GlassView,
+  isLiquidGlassAvailable,
+  type GlassEffectStyleConfig,
+  type GlassStyle,
+} from 'expo-glass-effect';
 import type { ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { View } from 'react-native';
@@ -13,7 +18,7 @@ type Props = {
   /** Painted wash on top of glass. Off for controls so the material can show. */
   fill?: boolean;
   tintColor?: string;
-  glassEffectStyle?: GlassStyle;
+  glassEffectStyle?: GlassStyle | GlassEffectStyleConfig;
   colorScheme?: 'auto' | 'light' | 'dark';
 };
 

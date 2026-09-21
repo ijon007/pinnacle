@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { GlassSurface } from '@/components/GlassSurface';
@@ -75,9 +75,12 @@ export default function LiveScreen() {
           title="Live"
           subtitle={
             run
-              ? runMeters >= 50
-                ? `${formatKm(runMeters)} km · ${formatPace(elapsed, runMeters)}/km`
-                : 'No distance this time.'
+              ? [
+                  runMeters >= 50 ? `${formatKm(runMeters)} km · ${formatPace(elapsed, runMeters)}/km` : 'No distance this time.',
+                  shots.length ? `${shots.length} photo${shots.length === 1 ? '' : 's'}.` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ')
               : shots.length
                 ? 'Tap a photo to caption it.'
                 : 'No photos this time.'
@@ -132,48 +135,28 @@ export default function LiveScreen() {
                 </Text>
               </Text>
             </GlassSurface>
-          ) : (
-            <View style={[styles.grid, { marginHorizontal: -GRID_PAD, gap: GRID_GAP }]}>
-              {packColumns(shots, COLS).map((col, i) => (
-                <View key={i} style={{ width: colW, gap: GRID_GAP }}>
-                  {col.map((shot) => {
-                    const h = colW * (shot.height / shot.width);
-                    return (
-                      <Pressable
-                        key={shot.id}
-                        collapsable={false}
-                        ref={(n) => {
-                          thumbs.current[shot.id] = n;
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel="Edit photo"
-                        onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-                        onPress={() => {
-                          thumbs.current[shot.id]?.measureInWindow((x, y, w, h) => {
-                            setOrigin({ x, y, w, h });
-                            setEditing(shot);
-                          });
-                        }}>
-                        <Image source={{ uri: shot.uri }} style={{ width: colW, height: h }} />
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ))}
-            </View>
-          )}
+          ) : null}
+          {shots.length ? (
+            <ShotMasonry
+              shots={shots}
+              colW={colW}
+              thumbs={thumbs}
+              onPick={(shot, origin) => {
+                setOrigin(origin);
+                setEditing(shot);
+              }}
+            />
+          ) : null}
         </TabScreen>
-        {run ? null : (
-          <PhotoEditor
-            shot={editing}
-            origin={origin}
-            onClose={() => setEditing(null)}
-            onChange={(next) => {
-              setShots((all) => all.map((s) => (s.id === next.id ? next : s)));
-              setEditing(next);
-            }}
-          />
-        )}
+        <PhotoEditor
+          shot={editing}
+          origin={origin}
+          onClose={() => setEditing(null)}
+          onChange={(next) => {
+            setShots((all) => all.map((s) => (s.id === next.id ? next : s)));
+            setEditing(next);
+          }}
+        />
       </>
     );
   }
@@ -223,6 +206,8 @@ export default function LiveScreen() {
           now={now}
           meters={runMeters}
           path={runPath}
+          lastUri={shots.at(-1)?.uri ?? null}
+          onCapture={(pic) => setShots((all) => [...all, { id: newId(), overlays: [], ...pic }])}
           onFix={({ meters, path }) => {
             setRunMeters(meters);
             setRunPath(path);
@@ -234,6 +219,48 @@ export default function LiveScreen() {
         />
       ) : null}
     </>
+  );
+}
+
+function ShotMasonry({
+  shots,
+  colW,
+  thumbs,
+  onPick,
+}: {
+  shots: Shot[];
+  colW: number;
+  thumbs: MutableRefObject<Record<string, View | null>>;
+  onPick: (shot: Shot, origin: PhotoOrigin) => void;
+}) {
+  return (
+    <View style={[styles.grid, { marginHorizontal: -GRID_PAD, gap: GRID_GAP }]}>
+      {packColumns(shots, COLS).map((col, i) => (
+        <View key={i} style={{ width: colW, gap: GRID_GAP }}>
+          {col.map((shot) => {
+            const h = colW * (shot.height / shot.width);
+            return (
+              <Pressable
+                key={shot.id}
+                collapsable={false}
+                ref={(n) => {
+                  thumbs.current[shot.id] = n;
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit photo"
+                onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                onPress={() => {
+                  thumbs.current[shot.id]?.measureInWindow((x, y, w, h) => {
+                    onPick(shot, { x, y, w, h });
+                  });
+                }}>
+                <Image source={{ uri: shot.uri }} style={{ width: colW, height: h }} />
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
   );
 }
 
