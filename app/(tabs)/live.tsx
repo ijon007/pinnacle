@@ -14,6 +14,7 @@ import { PhotoEditor, type PhotoOrigin } from '@/components/PhotoEditor';
 import { TabScreen } from '@/components/TabScreen';
 import { formatKm, formatPace, mapCamera, MAP_POI, type GeoPoint } from '@/lib/run';
 import { formatDuration, newId, packColumns, type Shot } from '@/lib/session';
+import { CHERRY } from '@/lib/theme';
 
 type Kind = 'workout' | 'run';
 type Phase = 'idle' | 'live' | 'summary';
@@ -224,33 +225,46 @@ export default function LiveScreen() {
           toolbarEnabled={false}
           userInterfaceStyle={theme === 'dark' ? 'dark' : 'light'}
         />
-        <View pointerEvents="box-none" style={[styles.dock, { paddingBottom: insets.bottom + 56 }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Start live workout"
-            onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-            onPress={() => start('workout')}
-            style={({ pressed }) => [{ flex: 1 }, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
-            <GlassSurface className="flex-row items-center justify-center gap-2 py-4" fill={false}>
-              <SymbolView name="record.circle" size={22} tintColor="#d20a2e" />
-              <Text className="text-2xl tracking-tight text-foreground" style={{ fontFamily: 'Instrument Serif' }}>
-                Workout
-              </Text>
+        <View pointerEvents="box-none" style={[styles.dock, { paddingBottom: insets.bottom + 36 }]}>
+          <GlassSurface
+            fill={false}
+            isInteractive={false}
+            className="w-full gap-3 px-5 pb-5 pt-4"
+            style={styles.card}>
+            <Text className="text-foreground" style={styles.cardLabel}>
+              Start Training
+            </Text>
+            <GlassSurface
+              fill={false}
+              glassEffectStyle="regular"
+              tintColor={CHERRY}
+              style={styles.pill}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Start live workout"
+                onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                onPress={() => start('workout')}
+                style={({ pressed }) => [styles.hit, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+                <SymbolView name="figure.strengthtraining.traditional" size={18} tintColor="#fff" weight="semibold" />
+                <Text style={styles.btnLabel}>Workout</Text>
+              </Pressable>
             </GlassSurface>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Start live run"
-            onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-            onPress={() => start('run')}
-            style={({ pressed }) => [{ flex: 1 }, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
-            <GlassSurface className="flex-row items-center justify-center gap-2 py-4" fill={false}>
-              <SymbolView name="figure.run" size={22} tintColor="#d20a2e" />
-              <Text className="text-2xl tracking-tight text-foreground" style={{ fontFamily: 'Instrument Serif' }}>
-                Run
-              </Text>
+            <GlassSurface
+              fill={false}
+              glassEffectStyle="regular"
+              tintColor={CHERRY}
+              style={styles.pill}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Start live run"
+                onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                onPress={() => start('run')}
+                style={({ pressed }) => [styles.hit, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+                <SymbolView name="figure.run" size={18} tintColor="#fff" weight="semibold" />
+                <Text style={styles.btnLabel}>Run</Text>
+              </Pressable>
             </GlassSurface>
-          </Pressable>
+          </GlassSurface>
         </View>
       </View>
       {phase === 'live' && kind === 'workout' ? (
@@ -333,8 +347,36 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 0,
+  },
+  card: {
+    borderCurve: 'continuous',
+    borderRadius: 40,
+  },
+  cardLabel: {
+    fontFamily: 'DM Sans',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  pill: {
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    height: 48,
+    width: '100%',
+  },
+  hit: {
+    height: 48,
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  btnLabel: {
+    fontFamily: 'DM Sans',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   stats: {
     flexDirection: 'row',
