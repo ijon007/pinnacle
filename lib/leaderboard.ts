@@ -17,7 +17,7 @@ export const YOU: BoardPerson = {
   you: true,
 };
 
-const PEERS: BoardPerson[] = [
+export const PEERS: BoardPerson[] = [
   { id: 'nori', handle: 'nori', name: 'Nori Hale', workouts: 42 },
   { id: 'kai', handle: 'kai', name: 'Kai Mendes', workouts: 37 },
   { id: 'june', handle: 'june', name: 'June Park', workouts: 29 },

@@ -7,10 +7,12 @@ import { AppearancePicker } from '@/components/AppearancePicker';
 import { GlassSurface } from '@/components/GlassSurface';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { TabScreen } from '@/components/TabScreen';
+import { useFriends } from '@/lib/friends';
 import { useProfile } from '@/lib/profile';
 
 export default function ProfileScreen() {
   const profile = useProfile();
+  const friendCount = useFriends().filter((person) => person.status === 'friend').length;
   const { theme } = useUniwind();
   const ink = theme === 'dark' ? '#fff' : '#1c1c1c';
 
@@ -48,12 +50,19 @@ export default function ProfileScreen() {
             {profile.bio}
           </Text>
         ) : null}
-        <Text className="mt-1 text-[15px]" style={{ fontFamily: 'DM Sans' }}>
-          <Text className="text-foreground" style={{ fontWeight: '600' }}>
-            12
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${friendCount} friends`}
+          onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+          onPress={() => router.push('/friends')}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+          <Text className="mt-1 text-[15px]" style={{ fontFamily: 'DM Sans' }}>
+            <Text className="text-foreground" style={{ fontWeight: '600' }}>
+              {friendCount}
+            </Text>
+            <Text className="text-muted-foreground"> friends</Text>
           </Text>
-          <Text className="text-muted-foreground"> friends</Text>
-        </Text>
+        </Pressable>
       </View>
 
       <Text

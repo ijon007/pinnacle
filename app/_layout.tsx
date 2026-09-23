@@ -48,6 +48,22 @@ export default function RootLayout() {
             name="edit-profile"
             options={{ headerShown: false, animation: 'slide_from_right', gestureEnabled: true }}
           />
+          <Stack.Screen
+            name="friends"
+            options={{ headerShown: false, animation: 'slide_from_right', gestureEnabled: true }}
+          />
+          <Stack.Screen
+            name="session/[id]"
+            options={{ headerShown: false, animation: 'slide_from_right', gestureEnabled: true }}
+          />
+          <Stack.Screen
+            name="person/[handle]"
+            options={{ headerShown: false, animation: 'slide_from_right', gestureEnabled: true }}
+          />
+          <Stack.Screen
+            name="challenge/[id]"
+            options={{ headerShown: false, animation: 'slide_from_right', gestureEnabled: true }}
+          />
         </Stack>
       </View>
       </SafeAreaProvider>
