@@ -34,12 +34,12 @@ const RANGES: { id: RangeId; label: string; scope: string }[] = [
 type Kind = 'lift' | 'run' | 'swim' | 'ride' | 'cardio' | 'voice';
 
 const KIND_LABEL: Record<Kind, string> = {
-  lift: 'lift',
-  run: 'run',
-  swim: 'swim',
-  ride: 'ride',
-  cardio: 'cardio',
-  voice: 'voice',
+  lift: 'Lift',
+  run: 'Run',
+  swim: 'Swim',
+  ride: 'Ride',
+  cardio: 'Cardio',
+  voice: 'Voice',
 };
 
 const MIX = [CHERRY, 'rgba(210,10,46,0.55)', 'rgba(210,10,46,0.32)', 'rgba(127,127,127,0.5)', 'rgba(127,127,127,0.32)'];
@@ -210,8 +210,6 @@ export default function LogsScreen() {
   const noun = visible.length === 1 ? 'session' : 'sessions';
   const minutes = sumMinutes(visible);
   const parts = mix(visible);
-  const lead = parts[0];
-  const mixLabel = lead ? `Mostly ${KIND_LABEL[lead[0]]} · ${formatMinutes(lead[1])}` : 'No time logged';
   const distance = distanceOf(visible);
 
   return (
@@ -325,9 +323,25 @@ export default function LogsScreen() {
               <View key={kind} style={{ flex: amount, backgroundColor: MIX[index] ?? MIX[MIX.length - 1] }} />
             ))}
           </View>
-          <Text className="text-[13px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
-            {mixLabel}
-          </Text>
+          {parts.length > 0 ? (
+            <View className="flex-row flex-wrap gap-x-3 gap-y-1.5">
+              {parts.map(([kind], index) => (
+                <View key={kind} className="flex-row items-center gap-1.5">
+                  <View
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: MIX[index] ?? MIX[MIX.length - 1] }}
+                  />
+                  <Text className="text-[12px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+                    {KIND_LABEL[kind]}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text className="text-[13px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+              No time logged
+            </Text>
+          )}
         </View>
       </GlassSurface>
 
