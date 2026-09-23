@@ -1,8 +1,10 @@
 import { GlassContainer } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
+import * as Sharing from 'expo-sharing';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Alert,
   Image,
   Keyboard,
   Modal,
@@ -17,6 +19,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -58,8 +61,10 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
   const [showChrome, setShowChrome] = useState(false);
   const [stickersOpen, setStickersOpen] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const dest = fitBox(shot?.width ?? 3, shot?.height ?? 4, winW, winH);
   const inputs = useRef<Record<string, TextInput | null>>({});
+  const frameRef = useRef<View>(null);
   const textBase = useRef<Overlay[] | null>(null);
   const closing = useRef(false);
   const progress = useSharedValue(0);
@@ -259,7 +264,44 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
   };
 
   const share = () => {
-    void Share.share(Platform.OS === 'ios' ? { url: shot.uri } : { message: shot.uri, title: 'Photo' });
+    if (sharing) return;
+    Keyboard.dismiss();
+    const flat = shot.overlays.some((o) => o.kind === 'sticker' || o.text.trim());
+    if (!flat) {
+      void Share.share(Platform.OS === 'ios' ? { url: shot.uri } : { message: shot.uri, title: 'Photo' });
+      return;
+    }
+    setSelectedId(null);
+    setSharing(true);
+    void (async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      try {
+        const raw = await captureRef(frameRef, {
+          format: 'jpg',
+          quality: 0.95,
+          result: 'tmpfile',
+        });
+        const uri = raw.startsWith('file://') || raw.startsWith('data:') ? raw : `file://${raw}`;
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/jpeg',
+            UTI: 'public.jpeg',
+            dialogTitle: 'Share photo',
+          });
+        } else {
+          await Share.share(Platform.OS === 'ios' ? { url: uri } : { message: uri, title: 'Photo' });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '';
+        if (!/cancel|dismiss|abort/i.test(message)) {
+          Alert.alert('Couldn’t share this photo');
+        }
+      } finally {
+        setSharing(false);
+      }
+    })();
   };
 
   return (
@@ -272,76 +314,82 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
             { left: dest.x, top: dest.y, width: dest.w, height: dest.h },
             photoStyle,
           ]}>
-          <Pressable style={styles.fill} onPress={dismissEdit}>
-            <Image
-              source={{
-                uri: shot.uri,
-                width: Math.round(dest.w * PixelRatio.get()),
-                height: Math.round(dest.h * PixelRatio.get()),
-              }}
-              style={{ width: dest.w, height: dest.h }}
-              resizeMode="cover"
-              fadeDuration={0}
-            />
-          </Pressable>
-          {shot.overlays.map((overlay) =>
-            overlay.kind === 'sticker' ? (
-              <DraggableSticker
-                key={overlay.id}
-                overlay={overlay}
-                canvas={dest}
-                selected={selectedId === overlay.id}
-                onSelect={() => setSelectedId(overlay.id)}
-                onMove={(nx, ny) => patch(overlay.id, { nx, ny }, true)}
-                onTransform={(scale, rotation) => patch(overlay.id, { scale, rotation }, true)}
-                onDelete={() => removeOverlay(overlay.id)}
-                trash={trash}
+          <View
+            ref={frameRef}
+            collapsable={false}
+            style={{ width: dest.w, height: dest.h, overflow: 'hidden' }}>
+            <Pressable style={styles.fill} onPress={dismissEdit}>
+              <Image
+                source={{
+                  uri: shot.uri,
+                  width: Math.round(dest.w * PixelRatio.get()),
+                  height: Math.round(dest.h * PixelRatio.get()),
+                }}
+                style={{ width: dest.w, height: dest.h }}
+                resizeMode="cover"
+                fadeDuration={0}
               />
-            ) : (
-              <DraggableCaption
-                key={overlay.id}
-                overlay={overlay}
-                canvas={dest}
-                inputRef={(n) => {
-                  inputs.current[overlay.id] = n;
-                }}
-                onSelect={() => setSelectedId(overlay.id)}
-                onOpen={() => {
-                  if (!textBase.current) textBase.current = shot.overlays;
-                  setSelectedId(overlay.id);
-                  inputs.current[overlay.id]?.focus();
-                }}
-                onFocus={() => {
-                  if (!textBase.current) textBase.current = shot.overlays;
-                  setSelectedId(overlay.id);
-                }}
-                onBlur={() => {
-                  const base = textBase.current;
-                  textBase.current = null;
-                  const before = base?.find((x) => x.id === overlay.id)?.text;
-                  const o = shot.overlays.find((x) => x.id === overlay.id);
-                  if (!o || before === o.text) return;
-                  if (!o.text.trim()) {
+            </Pressable>
+            {shot.overlays.map((overlay) =>
+              overlay.kind === 'sticker' ? (
+                <DraggableSticker
+                  key={overlay.id}
+                  overlay={overlay}
+                  canvas={dest}
+                  selected={selectedId === overlay.id}
+                  onSelect={() => setSelectedId(overlay.id)}
+                  onMove={(nx, ny) => patch(overlay.id, { nx, ny }, true)}
+                  onTransform={(scale, rotation) => patch(overlay.id, { scale, rotation }, true)}
+                  onDelete={() => removeOverlay(overlay.id)}
+                  trash={trash}
+                />
+              ) : (
+                <DraggableCaption
+                  key={overlay.id}
+                  overlay={overlay}
+                  canvas={dest}
+                  exporting={sharing}
+                  inputRef={(n) => {
+                    inputs.current[overlay.id] = n;
+                  }}
+                  onSelect={() => setSelectedId(overlay.id)}
+                  onOpen={() => {
+                    if (!textBase.current) textBase.current = shot.overlays;
+                    setSelectedId(overlay.id);
+                    inputs.current[overlay.id]?.focus();
+                  }}
+                  onFocus={() => {
+                    if (!textBase.current) textBase.current = shot.overlays;
+                    setSelectedId(overlay.id);
+                  }}
+                  onBlur={() => {
+                    const base = textBase.current;
+                    textBase.current = null;
+                    const before = base?.find((x) => x.id === overlay.id)?.text;
+                    const o = shot.overlays.find((x) => x.id === overlay.id);
+                    if (!o || before === o.text) return;
+                    if (!o.text.trim()) {
+                      setPast((p) => [...p, base ?? shot.overlays]);
+                      setFuture([]);
+                      onChange({
+                        ...shot,
+                        overlays: shot.overlays.filter((x) => x.id !== overlay.id),
+                      });
+                      setSelectedId(null);
+                      return;
+                    }
                     setPast((p) => [...p, base ?? shot.overlays]);
                     setFuture([]);
-                    onChange({
-                      ...shot,
-                      overlays: shot.overlays.filter((x) => x.id !== overlay.id),
-                    });
-                    setSelectedId(null);
-                    return;
-                  }
-                  setPast((p) => [...p, base ?? shot.overlays]);
-                  setFuture([]);
-                }}
-                onChangeText={(text) => patch(overlay.id, { text }, false)}
-                onMove={(nx, ny) => patch(overlay.id, { nx, ny }, true)}
-                onTransform={(scale, rotation) => patch(overlay.id, { scale, rotation }, true)}
-                onDelete={() => removeOverlay(overlay.id)}
-                trash={trash}
-              />
-            ),
-          )}
+                  }}
+                  onChangeText={(text) => patch(overlay.id, { text }, false)}
+                  onMove={(nx, ny) => patch(overlay.id, { nx, ny }, true)}
+                  onTransform={(scale, rotation) => patch(overlay.id, { scale, rotation }, true)}
+                  onDelete={() => removeOverlay(overlay.id)}
+                  trash={trash}
+                />
+              ),
+            )}
+          </View>
           <Animated.View pointerEvents="none" style={[styles.trash, trashStyle]}>
             <View style={styles.trashBubble}>
               <SymbolView name="trash.fill" size={22} tintColor="#fff" />
@@ -455,7 +503,7 @@ export function PhotoEditor({ shot, origin, onClose, onChange }: Props) {
                   </Chip>
                 </GlassContainer>
                 <GlassContainer spacing={10}>
-                  <Chip label="Share" onPress={share}>
+                  <Chip label="Share" onPress={share} disabled={sharing}>
                     <SymbolView name="square.and.arrow.up" size={18} tintColor="#fff" weight="semibold" />
                     <Text className="text-base text-white" style={styles.chipLabel}>
                       Share
@@ -644,6 +692,7 @@ function useDragOverlay(
 function DraggableCaption({
   overlay,
   canvas,
+  exporting,
   inputRef,
   onMove,
   onTransform,
@@ -657,6 +706,7 @@ function DraggableCaption({
 }: {
   overlay: Overlay;
   canvas: { w: number; h: number };
+  exporting: boolean;
   inputRef: (n: TextInput | null) => void;
   onMove: (nx: number, ny: number) => void;
   onTransform: (scale: number, rotation: number) => void;
@@ -695,19 +745,23 @@ function DraggableCaption({
             bh.value = e.nativeEvent.layout.height;
           }}>
           <View style={look.wrap}>
-            <TextInput
-              ref={inputRef}
-              value={overlay.text}
-              onChangeText={onChangeText}
-              onFocus={onFocus}
-              onBlur={onBlur}
-              placeholder="Text"
-              placeholderTextColor={placeholder}
-              pointerEvents="none"
-              autoCorrect={false}
-              underlineColorAndroid="transparent"
-              style={[styles.captionBase, look.input]}
-            />
+            {exporting ? (
+              <Text style={[styles.captionBase, look.input]}>{overlay.text}</Text>
+            ) : (
+              <TextInput
+                ref={inputRef}
+                value={overlay.text}
+                onChangeText={onChangeText}
+                onFocus={onFocus}
+                onBlur={onBlur}
+                placeholder="Text"
+                placeholderTextColor={placeholder}
+                pointerEvents="none"
+                autoCorrect={false}
+                underlineColorAndroid="transparent"
+                style={[styles.captionBase, look.input]}
+              />
+            )}
           </View>
         </Animated.View>
       </Animated.View>

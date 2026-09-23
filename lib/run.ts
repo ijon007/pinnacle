@@ -6,6 +6,25 @@ export type GeoPoint = {
 
 export const MAP_PITCH = 52;
 export const MAP_ALT = 650;
+/** Wide zoom range so pinch matches Apple Maps (block to flat 2D, pull out to globe). */
+export const MAP_CAMERA_ZOOM_RANGE = {
+  minCenterCoordinateDistance: 120,
+  maxCenterCoordinateDistance: 6_000_000,
+  animated: false,
+} as const;
+
+export type MapViewAngle = {
+  pitch: number;
+  heading: number;
+  altitude: number;
+};
+
+export const MAP_VIEW_DEFAULT: MapViewAngle = {
+  pitch: MAP_PITCH,
+  heading: 0,
+  altitude: MAP_ALT,
+};
+
 /** Apple Maps only — include list, everything else stays off. */
 export const MAP_POI = [
   'fitnessCenter',
@@ -27,14 +46,30 @@ export const MAP_POI = [
   'campground',
 ] as const;
 
-export function mapCamera(lat: number, lng: number, heading = 0) {
+export function mapCamera(
+  lat: number,
+  lng: number,
+  heading = 0,
+  view: MapViewAngle = MAP_VIEW_DEFAULT,
+) {
   return {
     center: { latitude: lat, longitude: lng },
-    pitch: MAP_PITCH,
+    pitch: view.pitch,
     heading,
-    altitude: MAP_ALT,
+    altitude: view.altitude,
   };
 }
+
+/** Shared MapKit gesture props — pan, pinch, rotate, and pitch like Apple Maps. */
+export const exploreMapProps = {
+  rotateEnabled: true,
+  pitchEnabled: true,
+  scrollEnabled: true,
+  zoomEnabled: true,
+  zoomTapEnabled: true,
+  toolbarEnabled: false,
+  cameraZoomRange: MAP_CAMERA_ZOOM_RANGE,
+} as const;
 
 const EARTH_M = 6_371_000;
 const MIN_STEP_M = 1;

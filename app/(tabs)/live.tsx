@@ -12,7 +12,7 @@ import { LiveCamera } from '@/components/LiveCamera';
 import { LiveRun } from '@/components/LiveRun';
 import { PhotoEditor, type PhotoOrigin } from '@/components/PhotoEditor';
 import { TabScreen } from '@/components/TabScreen';
-import { formatKm, formatPace, mapCamera, MAP_POI, type GeoPoint } from '@/lib/run';
+import { exploreMapProps, formatKm, formatPace, mapCamera, MAP_POI, type GeoPoint } from '@/lib/run';
 import { formatDuration, newId, packColumns, type Shot } from '@/lib/session';
 import { CHERRY } from '@/lib/theme';
 
@@ -38,6 +38,7 @@ export default function LiveScreen() {
   const [origin, setOrigin] = useState<PhotoOrigin>({ x: 0, y: 0, w: 0, h: 0 });
   const thumbs = useRef<Record<string, View | null>>({});
   const map = useRef<MapView>(null);
+  const driving = useRef(false);
   const insets = useSafeAreaInsets();
   const { theme } = useUniwind();
   const [locPerm, requestLocPerm] = Location.useForegroundPermissions();
@@ -68,6 +69,7 @@ export default function LiveScreen() {
           (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
         if (cancelled || !here) return;
         const heading = here.coords.heading;
+        driving.current = true;
         map.current?.animateCamera(
           mapCamera(
             here.coords.latitude,
@@ -212,18 +214,17 @@ export default function LiveScreen() {
         <MapView
           ref={map}
           style={StyleSheet.absoluteFill}
+          {...exploreMapProps}
           showsUserLocation={!!locPerm?.granted}
           showsMyLocationButton={false}
           showsCompass={false}
           showsBuildings
           showsPointsOfInterests
           pointsOfInterestFilter={[...MAP_POI]}
-          rotateEnabled
-          pitchEnabled
-          scrollEnabled
-          zoomEnabled
-          toolbarEnabled={false}
           userInterfaceStyle={theme === 'dark' ? 'dark' : 'light'}
+          onRegionChangeComplete={() => {
+            driving.current = false;
+          }}
         />
         <View pointerEvents="box-none" style={[styles.dock, { paddingBottom: insets.bottom + 36 }]}>
           <GlassSurface

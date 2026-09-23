@@ -20,7 +20,18 @@ import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-
 import { useUniwind } from 'uniwind';
 
 import { GlassSurface } from '@/components/GlassSurface';
-import { foldFix, formatKm, formatPace, mapCamera, movingElapsed, MAP_POI, type GeoPoint } from '@/lib/run';
+import {
+  exploreMapProps,
+  foldFix,
+  formatKm,
+  formatPace,
+  mapCamera,
+  MAP_VIEW_DEFAULT,
+  movingElapsed,
+  MAP_POI,
+  type GeoPoint,
+  type MapViewAngle,
+} from '@/lib/run';
 import { formatDuration, picUri } from '@/lib/session';
 import { CHERRY } from '@/lib/theme';
 
@@ -70,6 +81,8 @@ export function LiveRun({
   const map = useRef<MapView>(null);
   const camera = useRef<CameraView>(null);
   const busy = useRef(false);
+  const driving = useRef(false);
+  const viewRef = useRef<MapViewAngle>(MAP_VIEW_DEFAULT);
   const followingRef = useRef(true);
   const pausedRef = useRef(false);
   const last = useRef<GeoPoint | null>(path.at(-1) ?? null);
@@ -85,6 +98,21 @@ export function LiveRun({
   metersRef.current = meters;
   pathRef.current = path;
   onFixRef.current = onFix;
+
+  const drive = (lat: number, lng: number, heading: number, duration: number) => {
+    driving.current = true;
+    map.current?.animateCamera(mapCamera(lat, lng, heading, viewRef.current), { duration });
+  };
+
+  const snapViewFromMap = () => {
+    void map.current?.getCamera().then((cam) => {
+      viewRef.current = {
+        pitch: cam.pitch ?? viewRef.current.pitch,
+        heading: cam.heading ?? viewRef.current.heading,
+        altitude: cam.altitude ?? viewRef.current.altitude,
+      };
+    });
+  };
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) {
@@ -102,10 +130,7 @@ export function LiveRun({
         headingRef.current = course(loc.coords.heading, headingRef.current);
       }
       if (followingRef.current) {
-        map.current?.animateCamera(
-          mapCamera(loc.coords.latitude, loc.coords.longitude, headingRef.current),
-          { duration: 350 },
-        );
+        drive(loc.coords.latitude, loc.coords.longitude, headingRef.current, 350);
       }
       if (pausedRef.current) {
         last.current = { lat: loc.coords.latitude, lng: loc.coords.longitude, t: loc.timestamp };
@@ -134,10 +159,7 @@ export function LiveRun({
       if (cancelled) return;
       if (cached) {
         headingRef.current = course(cached.coords.heading, headingRef.current);
-        map.current?.animateCamera(
-          mapCamera(cached.coords.latitude, cached.coords.longitude, headingRef.current),
-          { duration: 0 },
-        );
+        drive(cached.coords.latitude, cached.coords.longitude, headingRef.current, 0);
         ingest(cached);
       }
       const s = await Location.watchPositionAsync(
@@ -192,7 +214,8 @@ export function LiveRun({
     setFollowing(true);
     const tip = path.at(-1);
     if (!tip) return;
-    map.current?.animateCamera(mapCamera(tip.lat, tip.lng, headingRef.current), { duration: 280 });
+    viewRef.current = MAP_VIEW_DEFAULT;
+    drive(tip.lat, tip.lng, headingRef.current, 280);
   };
 
   const buryLens = () => setLens(false);
@@ -275,7 +298,10 @@ export function LiveRun({
         <MapView
           ref={map}
           style={StyleSheet.absoluteFill}
-          initialCamera={start ? mapCamera(start.lat, start.lng, headingRef.current) : undefined}
+          initialCamera={
+            start ? mapCamera(start.lat, start.lng, headingRef.current, viewRef.current) : undefined
+          }
+          {...exploreMapProps}
           showsUserLocation={!!permission?.granted}
           showsMyLocationButton={false}
           showsCompass
@@ -283,15 +309,15 @@ export function LiveRun({
           showsPointsOfInterests
           pointsOfInterestFilter={[...MAP_POI]}
           legalLabelInsets={{ top: 0, right: 0, bottom: -80, left: 0 }}
-          rotateEnabled
-          pitchEnabled
-          scrollEnabled
-          zoomEnabled
-          toolbarEnabled={false}
           mapPadding={{ top: padTop, bottom: padBottom + mapPad, left: 16, right: 16 }}
           userInterfaceStyle={dark ? 'dark' : 'light'}
-          onPanDrag={() => {
+          onRegionChangeStart={() => {
+            if (driving.current) return;
             if (followingRef.current) setFollowing(false);
+          }}
+          onRegionChangeComplete={() => {
+            driving.current = false;
+            snapViewFromMap();
           }}>
           {coords.length > 1 ? (
             <Polyline coordinates={coords} strokeColor={CHERRY} strokeWidth={5} />
@@ -570,22 +596,45 @@ export function LiveRun({
                   ) : null}
                 </View>
 
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Take photo"
-                  disabled={!camPerm?.granted}
-                  onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-                  onPress={() => void shoot()}
-                  style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
-                  <GlassSurface
-                    className="h-[76px] w-[76px] items-center justify-center"
-                    colorScheme="dark"
-                    fill={false}
-                    glassEffectStyle={glassClear(true)}
-                    style={{ borderRadius: 999 }}>
-                    <View style={styles.shutter} />
-                  </GlassSurface>
-                </Pressable>
+                <View style={styles.shutterSlot}>
+                  {paused ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Finish run"
+                      onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                      onPress={stop}
+                      style={({ pressed }) => [
+                        styles.finishAbove,
+                        { transform: [{ scale: pressed ? 0.97 : 1 }] },
+                      ]}>
+                      <GlassSurface
+                        className="h-11 flex-row items-center justify-center gap-1.5 px-4"
+                        colorScheme="dark"
+                        fill={false}
+                        glassEffectStyle={glassClear(true)}
+                        style={{ borderRadius: 999 }}>
+                        <SymbolView name="stop.fill" size={12} tintColor="#fff" />
+                        <Text style={{ fontFamily: 'DM Sans', fontSize: 16, color: '#fff' }}>Finish</Text>
+                      </GlassSurface>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Take photo"
+                    disabled={!camPerm?.granted}
+                    onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                    onPress={() => void shoot()}
+                    style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+                    <GlassSurface
+                      className="h-[76px] w-[76px] items-center justify-center"
+                      colorScheme="dark"
+                      fill={false}
+                      glassEffectStyle={glassClear(true)}
+                      style={{ borderRadius: 999 }}>
+                      <View style={styles.shutter} />
+                    </GlassSurface>
+                  </Pressable>
+                </View>
 
                 <View style={styles.thumbSlot}>
                   <Pressable
@@ -670,6 +719,15 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 999,
     backgroundColor: '#fff',
+  },
+  shutterSlot: {
+    width: 76,
+    height: 76,
+    alignItems: 'center',
+  },
+  finishAbove: {
+    position: 'absolute',
+    bottom: 88,
   },
   thumbSlot: { width: 52, height: 52, marginHorizontal: 28 },
   thumb: {
