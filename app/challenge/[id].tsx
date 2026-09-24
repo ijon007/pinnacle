@@ -134,7 +134,8 @@ export default function ChallengeScreen() {
                     params: { handle: isYou ? profile.username : person.handle },
                   })
                 }
-                style={isYou ? { backgroundColor: youWash } : undefined}>
+                style={isYou ? { backgroundColor: youWash } : undefined}
+                className='rounded-lg'>
                 <View className="flex-row items-center gap-3 px-4 py-[13px]">
                   <Text
                     className="w-6 text-right text-[15px] text-muted-foreground"
