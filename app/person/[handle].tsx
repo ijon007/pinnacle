@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useUniwind } from 'uniwind';
 
@@ -56,8 +56,12 @@ export default function PersonScreen() {
   );
   const week = sessions.filter((session) => session.window === 'week').length;
 
+  const isFriend = friend?.status === 'friend';
+
   return (
-    <PushScreen title={name}>
+    <PushScreen
+      title={name}
+      action={friend && isFriend ? <FriendMenu friend={friend} ink={ink} /> : undefined}>
       <View className="items-start gap-1">
         <PersonAvatar
           name={name}
@@ -66,9 +70,19 @@ export default function PersonScreen() {
           ink={ink}
           photoUri={you ? profile.photoUri : null}
         />
-        <Text className="mt-2 text-[15px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
-          @{you ? profile.username : friend?.handle}
-        </Text>
+        <View className="mt-2 flex-row items-center gap-2">
+          <Text className="text-[15px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+            @{you ? profile.username : friend?.handle}
+          </Text>
+          {isFriend ? (
+            <View className="flex-row items-center gap-1">
+              <SymbolView name="checkmark.circle.fill" size={14} tintColor={CHERRY} />
+              <Text className="text-[13px]" style={{ fontFamily: 'DM Sans', fontWeight: '600', color: CHERRY }}>
+                Friends
+              </Text>
+            </View>
+          ) : null}
+        </View>
         {bio ? (
           <Text className="mt-0.5 text-[15px] text-foreground" style={{ fontFamily: 'DM Sans' }}>
             {bio}
@@ -76,13 +90,13 @@ export default function PersonScreen() {
         ) : null}
       </View>
 
+      {friend && !you && !isFriend ? <Relationship friend={friend} /> : null}
+
       <View className="flex-row gap-2.5">
         <Chip label="Workouts" value={ranked ? String(ranked.workouts) : '—'} />
         <Chip label="Streak" value={you ? String(week) : String(friend?.streak ?? 0)} />
         <Chip label="Rank" value={ranked ? ordinal(ranked.rank) : '—'} />
       </View>
-
-      {you || !friend ? null : <Relationship friend={friend} />}
 
       {recent.length > 0 ? (
         <View className="gap-3">
@@ -129,7 +143,7 @@ export default function PersonScreen() {
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <GlassSurface isInteractive={false} className="min-w-0 flex-1 px-3 py-3">
+    <GlassSurface isInteractive={false} className="px-3.5 py-3" style={styles.chip}>
       <Text className="text-[12px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
         {label}
       </Text>
@@ -144,58 +158,142 @@ function Chip({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Relationship({ friend }: { friend: Friend }) {
-  const [ask, setAsk] = useState(false);
-  const status = friend.status;
-  const label =
-    status === 'none' ? 'Add' : status === 'outgoing' ? 'Requested' : status === 'incoming' ? 'Accept' : 'Friends';
-  const tint = status === 'none' || status === 'incoming';
-
-  const press = () => {
-    if (status === 'none') {
-      requestFriend(friend.id);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      return;
-    }
-    if (status === 'outgoing') {
-      cancelFriend(friend.id);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      return;
-    }
-    if (status === 'incoming') {
-      acceptFriend(friend.id);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      return;
-    }
-    setAsk(true);
+function FriendMenu({ friend, ink }: { friend: Friend; ink: string }) {
+  const remove = () =>
     Alert.alert(`Remove ${friend.name}?`, 'They’ll drop off your friends list.', [
-      { text: 'Keep', style: 'cancel', onPress: () => setAsk(false) },
+      { text: 'Keep', style: 'cancel' },
       {
-        text: 'Remove',
+        text: 'Remove Friend',
         style: 'destructive',
         onPress: () => {
-          setAsk(false);
           removeFriend(friend.id);
           router.back();
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
       },
     ]);
-  };
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ busy: ask }}
+      accessibilityLabel={`More options for ${friend.name}`}
       onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-      onPress={press}
+      onPress={remove}
+      hitSlop={8}
+      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+      <GlassSurface
+        fill={false}
+        className="h-11 w-11 items-center justify-center rounded-full"
+        style={{ borderRadius: 999 }}>
+        <SymbolView name="ellipsis" size={18} tintColor={ink} weight="semibold" />
+      </GlassSurface>
+    </Pressable>
+  );
+}
+
+function Relationship({ friend }: { friend: Friend }) {
+  const first = friend.name.split(' ')[0];
+
+  switch (friend.status) {
+    case 'none':
+      return (
+        <Action
+          label="Add Friend"
+          icon="person.badge.plus"
+          tint
+          onPress={() => {
+            requestFriend(friend.id);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }}
+        />
+      );
+    case 'outgoing':
+      return (
+        <GlassSurface isInteractive={false} className="gap-3 p-4">
+          <View className="gap-0.5">
+            <Text className="text-base text-foreground" style={{ fontFamily: 'DM Sans', fontWeight: '600' }}>
+              Friend request sent
+            </Text>
+            <Text className="text-[14px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+              Waiting for {first} to accept.
+            </Text>
+          </View>
+          <Action
+            label="Cancel Request"
+            onPress={() => {
+              cancelFriend(friend.id);
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          />
+        </GlassSurface>
+      );
+    case 'incoming':
+      return (
+        <GlassSurface isInteractive={false} className="gap-3 p-4">
+          <View className="gap-0.5">
+            <Text className="text-base text-foreground" style={{ fontFamily: 'DM Sans', fontWeight: '600' }}>
+              {first} wants to be friends
+            </Text>
+            <Text className="text-[14px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+              Accept to see each other’s workouts.
+            </Text>
+          </View>
+          <View className="flex-row gap-2.5">
+            <View className="flex-1">
+              <Action
+                label="Decline"
+                onPress={() => {
+                  cancelFriend(friend.id);
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              />
+            </View>
+            <View className="flex-1">
+              <Action
+                label="Accept"
+                tint
+                onPress={() => {
+                  acceptFriend(friend.id);
+                  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }}
+              />
+            </View>
+          </View>
+        </GlassSurface>
+      );
+    case 'friend':
+      return null;
+    default: {
+      const neverStatus: never = friend.status;
+      return neverStatus;
+    }
+  }
+}
+
+function Action({
+  label,
+  icon,
+  tint = false,
+  onPress,
+}: {
+  label: string;
+  icon?: SFSymbol;
+  tint?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+      onPress={onPress}
       style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}>
       <GlassSurface
         fill={false}
         tintColor={tint ? CHERRY : undefined}
-        className="h-12 items-center justify-center"
+        className="h-12 flex-row items-center justify-center gap-2"
         style={{ borderRadius: 999 }}>
+        {icon ? <SymbolView name={icon} size={17} tintColor="#fff" weight="semibold" /> : null}
         <Text
           className={`text-[16px] ${tint ? 'text-white' : 'text-foreground'}`}
           style={{ fontFamily: 'DM Sans', fontWeight: '600' }}>
@@ -207,6 +305,10 @@ function Relationship({ friend }: { friend: Friend }) {
 }
 
 const styles = StyleSheet.create({
+  chip: {
+    flex: 1,
+    minWidth: 0,
+  },
   group: {
     alignSelf: 'stretch',
     borderCurve: 'continuous',
