@@ -71,7 +71,7 @@ export function NewChallengeSheet({ visible, onClose, onCreated }: Props) {
 
   return (
     <GlassSheet visible={visible} onClose={onClose}>
-      <View className="gap-4 px-4 pb-4">
+      <View className="gap-4 px-4 pb-3">
         <Text
           className="text-3xl tracking-tight text-foreground"
           style={{ fontFamily: 'Instrument Serif', letterSpacing: -0.4 }}>

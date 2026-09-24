@@ -10,7 +10,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/GlassSurface';
 import { project, rubberband } from '@/lib/sheetPhysics';
@@ -130,39 +129,30 @@ export function GlassSheet({ visible, onClose, children }: Props) {
       statusBarTranslucent
       onRequestClose={onClose}
       presentationStyle="overFullScreen">
-      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <GestureHandlerRootView style={styles.fill}>
-          <View style={styles.fill} pointerEvents="box-none">
-            <Animated.View style={[styles.scrim, scrimStyle]}>
-              <Pressable style={styles.fill} onPress={onClose} accessibilityLabel="Dismiss" />
-            </Animated.View>
-            <GestureDetector gesture={pan}>
-              <Animated.View
-                style={[styles.sheetWrap, sheetStyle]}
-                onLayout={(e) => {
-                  sheetH.value = e.nativeEvent.layout.height;
-                }}>
-                <View style={styles.sheet}>
-                  <GlassSurface isInteractive={false} fill={false} style={styles.sheetGlass} />
-                  <SheetPad>
-                    <View style={styles.handleHit}>
-                      <View style={styles.handle} />
-                    </View>
-                    {children}
-                  </SheetPad>
+      <GestureHandlerRootView style={styles.fill}>
+        <View style={styles.fill} pointerEvents="box-none">
+          <Animated.View style={[styles.scrim, scrimStyle]}>
+            <Pressable style={styles.fill} onPress={onClose} accessibilityLabel="Dismiss" />
+          </Animated.View>
+          <GestureDetector gesture={pan}>
+            <Animated.View
+              style={[styles.sheetWrap, sheetStyle]}
+              onLayout={(e) => {
+                sheetH.value = e.nativeEvent.layout.height;
+              }}>
+              <View style={styles.sheet}>
+                <GlassSurface isInteractive={false} fill={false} style={styles.sheetGlass} />
+                <View style={styles.handleHit}>
+                  <View style={styles.handle} />
                 </View>
-              </Animated.View>
-            </GestureDetector>
-          </View>
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
+                {children}
+              </View>
+            </Animated.View>
+          </GestureDetector>
+        </View>
+      </GestureHandlerRootView>
     </Modal>
   );
-}
-
-function SheetPad({ children }: { children: ReactNode }) {
-  const insets = useSafeAreaInsets();
-  return <View style={{ paddingBottom: insets.bottom }}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
