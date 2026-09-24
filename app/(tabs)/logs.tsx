@@ -6,9 +6,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useUniwind } from 'uniwind';
 
 import { GlassSurface } from '@/components/GlassSurface';
+import { SessionPeek } from '@/components/SessionPeek';
 import { TabScreen } from '@/components/TabScreen';
 import { VoiceLogSheet } from '@/components/VoiceLogSheet';
-import { ZoomLink } from '@/components/ZoomLink';
 import {
   addSession,
   distanceOf,
@@ -17,6 +17,7 @@ import {
   mix,
   useSessions,
   type Kind,
+  type Session,
   type Window,
 } from '@/lib/sessions';
 import { CHERRY } from '@/lib/theme';
@@ -68,6 +69,7 @@ export default function LogsScreen() {
   const icon = dark ? '#fff' : '#1c1c1c';
   const [logOpen, setLogOpen] = useState(false);
   const [range, setRange] = useState<RangeId>('week');
+  const [peek, setPeek] = useState<Session | null>(null);
   const sessions = useSessions();
   const visible = sessions.filter((session) => inRange(session.window, range));
   const scope = RANGES.find((item) => item.id === range)?.scope ?? 'this week';
@@ -238,30 +240,29 @@ export default function LogsScreen() {
         {visible.map((session, i) => (
           <View key={session.id}>
             {i > 0 ? <View className="ml-14 bg-border" style={styles.rule} /> : null}
-            <ZoomLink href={{ pathname: '/session/[id]', params: { id: session.id } }}>
-              <Pressable
+            <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${session.name}, ${session.time}, ${session.detail}`}
-                onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
-              <View className="flex-row items-center gap-3.5 px-4 py-[14px]">
-                <SymbolView name={session.symbol} size={22} tintColor={icon} weight="medium" />
-                <View className="min-w-0 flex-1">
-                  <Text className="text-base text-foreground" style={{ fontFamily: 'DM Sans' }}>
-                    {session.name}
-                  </Text>
-                  <Text
-                    className="mt-0.5 text-[13px] text-muted-foreground"
-                    style={{ fontFamily: 'DM Sans' }}
-                    numberOfLines={1}>
-                    {session.detail}
+                onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                onPress={() => setPeek(session)}>
+                <View className="flex-row items-center gap-3.5 px-4 py-[14px]">
+                  <SymbolView name={session.symbol} size={22} tintColor={icon} weight="medium" />
+                  <View className="min-w-0 flex-1">
+                    <Text className="text-base text-foreground" style={{ fontFamily: 'DM Sans' }}>
+                      {session.name}
+                    </Text>
+                    <Text
+                      className="mt-0.5 text-[13px] text-muted-foreground"
+                      style={{ fontFamily: 'DM Sans' }}
+                      numberOfLines={1}>
+                      {session.detail}
+                    </Text>
+                  </View>
+                  <Text className="text-[15px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
+                    {session.time}
                   </Text>
                 </View>
-                <Text className="text-[15px] text-muted-foreground" style={{ fontFamily: 'DM Sans' }}>
-                  {session.time}
-                </Text>
-              </View>
-              </Pressable>
-            </ZoomLink>
+            </Pressable>
           </View>
         ))}
       </GlassSurface>
@@ -287,6 +288,7 @@ export default function LogsScreen() {
           });
         }}
       />
+      <SessionPeek session={peek} onClose={() => setPeek(null)} />
     </>
   );
 }

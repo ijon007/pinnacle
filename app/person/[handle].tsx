@@ -1,13 +1,14 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useUniwind } from 'uniwind';
 
 import { GlassSurface } from '@/components/GlassSurface';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import { PushScreen } from '@/components/PushScreen';
-import { ZoomLink } from '@/components/ZoomLink';
+import { SessionPeek } from '@/components/SessionPeek';
 import {
   acceptFriend,
   cancelFriend,
@@ -18,7 +19,7 @@ import {
 } from '@/lib/friends';
 import { board, ordinal } from '@/lib/leaderboard';
 import { useProfile } from '@/lib/profile';
-import { useSessions } from '@/lib/sessions';
+import { useSessions, type Session } from '@/lib/sessions';
 import { CHERRY } from '@/lib/theme';
 
 function param(value: string | string[] | undefined) {
@@ -32,6 +33,7 @@ export default function PersonScreen() {
   const sessions = useSessions();
   const { theme } = useUniwind();
   const ink = theme === 'dark' ? '#fff' : '#1c1c1c';
+  const [peek, setPeek] = useState<Session | null>(null);
   const you = handle === profile.username;
   const friend = friends.find((person) => person.handle === handle) ?? null;
   const ranked = board()
@@ -59,6 +61,7 @@ export default function PersonScreen() {
   const isFriend = friend?.status === 'friend';
 
   return (
+    <View className="flex-1">
     <PushScreen
       title={name}
       action={friend && isFriend ? <FriendMenu friend={friend} ink={ink} /> : undefined}>
@@ -109,11 +112,11 @@ export default function PersonScreen() {
             {recent.map((session, index) => (
               <View key={session.id}>
                 {index > 0 ? <View className="ml-4 bg-border" style={styles.rule} /> : null}
-                <ZoomLink href={{ pathname: '/session/[id]', params: { id: session.id } }}>
-                  <Pressable
+                <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${session.name}, ${session.time}`}
-                    onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+                    onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                    onPress={() => setPeek(session)}>
                     <View className="flex-row items-center justify-between px-4 py-3.5">
                       <View className="min-w-0 flex-1">
                         <Text className="text-base text-foreground" style={{ fontFamily: 'DM Sans' }}>
@@ -130,14 +133,15 @@ export default function PersonScreen() {
                         {session.time}
                       </Text>
                     </View>
-                  </Pressable>
-                </ZoomLink>
+                </Pressable>
               </View>
             ))}
           </GlassSurface>
         </View>
       ) : null}
     </PushScreen>
+    <SessionPeek session={peek} onClose={() => setPeek(null)} />
+    </View>
   );
 }
 
